@@ -2,6 +2,7 @@ from flask import Blueprint
 from flask import jsonify, request
 from ..services.ai_service import get_ai_response
 from uuid import uuid4
+from ..models.db import get_sessions, get_message
 
 chat_bp = Blueprint("chat", __name__)
 
@@ -24,3 +25,28 @@ def send_message():
             "reply": ai_reply
         }
     )
+
+@chat_bp.route("/sessions", methods=["GET"])
+def show_sessions():
+    """Calls get_sessions() and returns JSON"""
+    """we already have all the list of sessions there from the database through get_sessions, here we just need to call the functiona nd return if as a json"""
+    return jsonify(get_sessions())
+     # Return jsonify(get_sessions)
+
+@chat_bp.route("/chat/history", methods = ["GET"])
+def show_session_messages():
+    """
+    accepts get requests at /chat/history
+    reads session_id from the URL query string (not from json body - it iis a get, no post)
+    flask has reques.args.get("sessions_id") for quey parameter
+    calls get_message(session_id) fromm the database
+    returns json of the stored messages"""
+    session_id = request.args.get("session_id", default="")
+
+    # put and error handling mechanism in case the session id is not available
+    if not session_id:
+        return jsonify({"error": "session_id is required"})
+    
+    messages = get_message(session_id=session_id)
+
+    return jsonify({"session_id": session_id, "messages": messages})

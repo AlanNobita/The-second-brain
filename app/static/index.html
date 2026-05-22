@@ -7,12 +7,18 @@
     <title>The Second Brain</title>
 </head>
 <body>
-    <div class="chat-container">
-        <div class="header">Second Brain</div>
-        <div class="messages" id="messages"></div>
-        <div class="input-area">
-            <input type="text" id="user-input" placeholder="Type your message..." autofocus>
-            <button id="send-btn"></button>
+    <div class="app">
+        <div class="sidebar">
+            <div class="sidebar-header">Conversations</div>
+            <div class="session-list" id="session-list"></div>
+        </div>
+        <div class="chat-container">
+            <div class="header">Second Brain</div>
+            <div class="messages" id="messages"></div>
+            <div class="input-area">
+                <input type="text" id="user-input" placeholder="Type your message..." autofocus>
+                <button id="send-btn"></button>
+            </div>
         </div>
     </div>
     <script type="module" src="script.js"></script>

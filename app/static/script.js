@@ -67,3 +67,30 @@ input.addEventListener("keydown", (e) => {
 });
 loadSessions();
 
+const searchInput = document.getElementById("search-input");
+
+async function performSearch(query) {
+    const response = await fetch("/search?q=" + encodeURIComponent(query))
+    const results = await response.json();
+    messagesDiv.innerHTML = "";
+    if (results.length === 0) { 
+        addMessage("assistant", "No messages found for \"" + query + "\"");
+        return ;
+    }
+    addMessage("assistant", "Search results for \"" + query + "\"")
+    results.forEach(m => {
+        const sessionLabel = "Session: " + m.session_id.slice(0, 8) + "...";
+        const div = document.createElement("div");
+        div.className = "message " + m.role;
+        div.textContent = "[" + sessionLabel + "] " + m.content;
+        div.style.cursor = "pointer";
+        div.addEventListener("click", () => loadSession(m.session_id));
+        messagesDiv.appendChild(div);
+    })
+}
+
+searchInput.addEventListener("input", (e) =>{
+    const query = e.target.value.trim();
+    if (query) performSearch(query);
+    else loadSessions();
+})

@@ -3,6 +3,8 @@ from flask import jsonify, request
 from ..services.ai_service import get_ai_response
 from uuid import uuid4
 from ..models.db import get_sessions, get_message
+from ..models.db import search_messages
+
 
 chat_bp = Blueprint("chat", __name__)
 
@@ -50,3 +52,14 @@ def show_session_messages():
     messages = get_message(session_id=session_id)
 
     return jsonify({"session_id": session_id, "messages": messages})
+
+
+@chat_bp.route("/search", methods=["GET"])
+def find_message_with_keywords():
+    query = request.args.get("q", "")
+
+    if not query:
+        return jsonify([])
+    results = search_messages(query=query)
+
+    return jsonify(results)

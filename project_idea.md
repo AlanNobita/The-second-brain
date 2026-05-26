@@ -36,7 +36,18 @@ Later phases introduce:
 * embeddings
 * RAG pipelines
 * learning systems
-* knowledge graphs
+* Knowledge Graph:
+    - A structured data layer that stores concepts, topics, and their relationships
+    - Extracted from conversations using AI (OpenRouter)
+    - Currently the "thinking" part — concepts linked by meaning, not just keywords
+    - Stored in the database (dedicated table for nodes and edges)
+    - The foundation that powers the graph view
+* Graph View:
+    - Visual interface that renders the knowledge graph as an interactive canvas
+    - D3.js force-directed graph in the browser
+    - Nodes = concepts, Edges = relationships
+    - Features: zoom, drag, click to navigate, filter by topic
+    - The "seeing" part — makes the knowledge graph explorable
 * reflection systems
 * proactive agents
 * cognitive assistance
@@ -45,7 +56,7 @@ Tech stack:
 
 * Python
 * Flask backend initially
-* OpenAI APIs
+* OpenAI compatible APIs (OpenRouter)
 * SQLite first, PostgreSQL later
 * ChromaDB/vector retrieval later
 * HTML/CSS/JavaScript frontend initially
@@ -64,3 +75,4 @@ Engineering priorities:
 The system should be designed like a long-term software platform, not a small tutorial project.
 
 The AI should help improve user cognition, understanding, memory, learning, and productivity rather than simply generating text.
+

@@ -131,3 +131,19 @@ body {
     background: #999;
     cursor: not-allowed;
 }
+
+.search-box { 
+    padding: 8px;
+    border-bottom: 1px solid #e0e0e0;
+}
+.search-box input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    font-size: 13px;
+    border-radius: 6px;
+    outline: none;
+}
+.search-box input:focus  {
+    border-color: #007aff;
+}

@@ -69,3 +69,25 @@ def get_sessions():
     return [dict(row) for row in rows]
 
     
+
+# def search_messages(query): 
+#     # search all past messages containing that word 
+#     if not query:
+#         return []
+#     conn = get_connection()
+#     rows = conn.execute("SELECT content, role, session_id, created_at FROM messages WHERE content LIKE ? ORDER BY created_at DESC LIMIT 50", (f"%{query}%")).fetchall()
+#     conn.close()
+
+
+#     return [dict(row) for row in rows]
+
+def search_messages(query):
+    if not query:
+        return []
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT content, role, session_id, created_at FROM messages WHERE content LIKE ? ORDER BY created_at DESC LIMIT 50",
+        (f"%{query}%",)
+    ).fetchall()
+    conn.close()
+    return [dict(row) for row in rows]

@@ -224,3 +224,5 @@ Thumbs.db
 
 #database (sqlite3)
 *.db
+
+chroma_db/

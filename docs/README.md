@@ -9,12 +9,15 @@ Second Brain solves **information overload and fragmented knowledge**. Unlike st
 ## Key Features
 
 | Feature | Status |
-|---|---|
+|---|---|---|
 | Session-based AI chat with context memory | ✅ |
 | Persistent message storage (SQLite) | ✅ |
 | Semantic search with RAG (ChromaDB) | ✅ |
 | Cross-session memory retrieval | ✅ |
 | Conversation sidebar & history | ✅ |
+| YouTube ingestion (transcript, de-bloat, search) | ✅ |
+| YouTube channel subscriptions (auto-ingest) | ✅ |
+| Obsidian note export | ✅ |
 | Knowledge Graph (concepts + relationships) | ❌ Phase 5 |
 | Proactive agents & daily reflection | ❌ Phase 6 |
 | Hybrid search (FTS5 + vector) | ❌ Phase 4+ |
@@ -44,7 +47,7 @@ pip install -r requirements.txt
 
 # Set up environment
 cp .example.env .env
-# Edit .env with your OPENROUTER_API_KEY
+# Edit .env with your OPENROUTER_API_KEY and optional YOUTUBE_API_KEY
 
 # Run
 python run.py
@@ -54,7 +57,7 @@ Open `http://localhost:5000` in a browser.
 
 ## Project Status
 
-Actively developed. Phases 0-4 complete (Foundation, CRUD, AI Chat, Semantic Memory). Phase 5 (Knowledge Graph) is the next milestone.
+Actively developed. Phases 0-4 complete plus YouTube ingestion pipeline. Phase 5 (Knowledge Graph) is the next milestone.
 
 ## Documentation
 

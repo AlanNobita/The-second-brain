@@ -142,6 +142,153 @@ Returns messages ranked by semantic similarity using ChromaDB vector search.
 
 **Error** `200` with empty array `[]` if `q` is empty.
 
+## YouTube Search
+
+```
+GET /yt/search?q=<query>
+```
+
+**Query Parameters**
+
+| Parameter | Required | Description |
+|---|---|---|
+| `q` | yes | Search query |
+
+**Response** `200 OK`
+
+```json
+[
+    {
+        "video_id": "dQw4w9WgXcQ",
+        "title": "Rick Astley - Never Gonna Give You Up",
+        "channel": "Rick Astley",
+        "channel_url": "https://www.youtube.com/@RickAstley",
+        "published_at": "20091025",
+        "url": "https://youtube.com/watch?v=dQw4w9WgXcQ"
+    }
+]
+```
+
+Powered by `yt-dlp` search (no API key required).
+
+**Error** `400` if `q` is missing.
+
+## YouTube Ingest
+
+```
+POST /yt/ingest
+Content-Type: application/json
+```
+
+**Request Body**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `video_url` | string | yes | Full YouTube URL |
+
+**Response** `200 OK`
+
+```json
+{
+    "session_id": "yt_abc123def456",
+    "file_path": "/path/to/obsidian-ingest/2026-06-01-video-title.md",
+    "title": "Video Title"
+}
+```
+
+Pipeline: fetch transcript → de-bloat via OpenRouter → save as Obsidian `.md` → embed into ChromaDB for RAG.
+
+**Error** `500` with `{"error": "..."}` if transcript unavailable or de-bloat fails.
+
+## YouTube Channel Ingest
+
+```
+POST /yt/channel
+Content-Type: application/json
+```
+
+**Request Body**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `channel_url` | string | yes | YouTube channel URL or handle (e.g. `@sentdex`) |
+
+**Response** `200 OK`
+
+```json
+{
+    "ingested_count": 3,
+    "videos": [{"title": "...", "video_id": "..."}]
+}
+```
+
+Fetches latest 5 videos from the channel and ingests each one.
+
+## YouTube Subscriptions
+
+### Subscribe
+
+```
+POST /yt/subscribe
+Content-Type: application/json
+```
+
+**Request Body**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `channel_url` | string | yes | YouTube channel URL or handle |
+
+**Response** `200 OK`
+
+```json
+{
+    "id": 1,
+    "channel_name": "Sentdex",
+    "channel_url": "https://www.youtube.com/@sentdex"
+}
+```
+
+### Unsubscribe
+
+```
+POST /yt/unsubscribe
+Content-Type: application/json
+```
+
+**Request Body**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `sub_id` | int | yes | Subscription ID from `/yt/subscriptions` |
+
+**Response** `200 OK`
+
+```json
+{"status": "ok"}
+```
+
+### List Subscriptions
+
+```
+GET /yt/subscriptions
+```
+
+**Response** `200 OK`
+
+```json
+[
+    {
+        "id": 1,
+        "channel_name": "Sentdex",
+        "channel_url": "https://www.youtube.com/@sentdex",
+        "last_checked": "2026-06-01 12:00:00"
+    }
+]
+```
+
+Subscriptions are checked every 6 hours (configurable via `YT_CHECK_INTERVAL_HOURS`). When a chat message is sent, a lazy background check also runs to catch new videos between scheduler intervals.
+
 ## Error Responses
 
 All endpoints return standard HTTP status codes:

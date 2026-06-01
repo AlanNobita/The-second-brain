@@ -24,6 +24,10 @@ cp .example.env .env
 ```
 OPENROUTER_API_KEY=sk-or-v1-...
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+# YouTube (optional — without these, transcript ingest uses yt-dlp fallback)
+YT_CHECK_INTERVAL_HOURS=6
+YT_MAX_PER_CHECK=5
+OBSIDIAN_NOTES_PATH=./obsidian-ingest
 ```
 
 ## Running
@@ -50,10 +54,31 @@ pytest
 
 ### Test Coverage
 
+**Core:**
+
 | Test | Route | Asserts |
 |---|---|---|
 | `test_health_endpoing` | `GET /api/health` | Returns `{"status": "ok"}` |
 | `test_index_route` | `GET /` | Returns 200, contains "Second" |
+
+**YouTube (31 unit tests, 1 E2E script):**
+
+| Test file | Tests | What it covers |
+|---|---|---|
+| `test_youtube_db.py` | 9 | Subscription CRUD, dedup, reactivation, ingested videos |
+| `test_youtube_service.py` | 12 | URL parsing (all formats), transcript fetch, search, channel videos |
+| `test_note_service.py` | 4 | De-bloat cleanup, substance preservation, markdown format, file save |
+| `test_subscription_service.py` | 5 | Subscribe/unsub, due checking, auto-ingest pipeline |
+| `test_youtube_routes.py` | 4 | HTTP 200/400 responses for all endpoints |
+| `e2e_youtube_manual.py` | 6 | Full pipeline (skips if API keys missing) |
+
+```bash
+# Run all YouTube tests
+pytest tests/test_youtube_db.py tests/test_youtube_service.py tests/test_note_service.py tests/test_subscription_service.py tests/test_youtube_routes.py -v
+
+# Manual E2E
+python tests/e2e_youtube_manual.py
+```
 
 ## Code Conventions
 
@@ -117,6 +142,22 @@ Singleton service initialized at startup:
 - Vector DB: ChromaDB with `PersistentClient`
 - Collection: `"messages"` with metadata `{session_id, role}`
 
+### YouTube Services
+
+| Service | File | Role |
+|---|---|---|
+| **youtube_service** | `app/services/youtube_service.py` | Transcript fetch (youtube-transcript-api → yt-dlp fallback), video ID extraction, search, channel videos |
+| **note_service** | `app/services/note_service.py` | De-bloat transcript via OpenRouter (regex fallback), save as Obsidian `.md` |
+| **subscription_service** | `app/services/subscription_service.py` | Channel subscribe/unsub/list, check due, auto-ingest pipeline |
+| **scheduler** | `app/services/scheduler.py` | APScheduler in-process, 6-hour interval, atexit shutdown |
+| **youtube_db** | `app/models/youtube_db.py` | SQLite tables: `subscriptions`, `ingested_videos` |
+
+Transcript fetch fallback chain:
+1. `youtube-transcript-api` (fast, no deps)
+2. `yt-dlp` (downloads auto-subs, no API key needed)
+
+YouTube search and channel listing use `yt-dlp` directly (no API key required for basic usage).
+
 ### `models/db.py`
 
 Raw SQLite data access:
@@ -136,7 +177,8 @@ Vanilla JS with no build step. CDN dependency: `marked.js` (not currently used i
 
 | Function | Trigger | Behavior |
 |---|---|---|
-| `sendMessage()` | Click / Enter | POST to `/chat/send`, renders response |
+| `sendMessage()` | Click / Enter | Intercepts `/` commands, else POST to `/chat/send` |
+| `handleYTCommand()` | `/yt` prefix | Routes `/ytsearch`, `/ytchannel`, `/ytsub`, `/ytunsub`, `/ytsubs` to API |
 | `loadSessions()` | Page load, after send | Fills sidebar from `/sessions` |
 | `loadSession(id)` | Click session | GET `/chat/history`, renders messages |
 | `performSearch(query)` | Type in search box | GET `/search`, renders results |
@@ -163,6 +205,13 @@ Areas to address for production deployment:
 | **CORS** | Same-origin only | Configure for production domain |
 | **Model selection** | Hardcoded free model | Make configurable |
 | **Async** | Synchronous requests | Add background task queue (Celery) |
+
+## Completed Phases
+
+| Phase | What | Status |
+|---|---|---|
+| 0-4 | Foundation, CRUD, AI Chat, Semantic Memory | ✅ |
+| YouTube | Transcript ingestion, de-bloat, subscriptions, scheduler | ✅ |
 
 ## Upcoming Phases
 

@@ -1,5 +1,5 @@
 import pytest
-from app.models.db import get_connection, init_db, init_fts
+from app.models.db import get_connection, init_db, init_fts, search_messages_fts
 
 
 @pytest.fixture(autouse=True)
@@ -41,7 +41,12 @@ def test_fts_search_returns_ranked():
     conn.commit()
     conn.close()
     init_fts()
-    from app.models.db import search_messages_fts
     results = search_messages_fts("python")
     assert len(results) == 2
-    assert results[0][1] <= 0
+    assert results[0][1] < results[1][1]
+
+
+def test_fts_syntax_error_returns_empty():
+    """Malformed FTS5 query should not crash, return empty instead"""
+    results = search_messages_fts('"unclosed')
+    assert results == []

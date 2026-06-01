@@ -21,6 +21,7 @@ graph TB
 
     subgraph External
         OR[OpenRouter API]
+        YT[YouTube / yt-dlp]
     end
 
     UI --> RP
@@ -29,6 +30,7 @@ graph TB
     MD --> SQL
     SV --> CHR
     SV --> OR
+    SV --> YT
 ```
 
 ## Clean Architecture Layering
@@ -63,6 +65,47 @@ graph LR
 | **Domain** | `app/services/` | Models, external APIs |
 | **Data** | `app/models/` | SQLite only |
 | **Static** | `app/static/` | Nothing (served as-is) |
+
+### YouTube Ingestion
+
+YouTube features add an additional data flow:
+
+```mermaid
+graph TB
+    subgraph User
+        CHAT[Chat UI /yt commands]
+    end
+
+    subgraph Backend
+        YR[yt routes]
+        YS[youtube_service]
+        NS[note_service]
+        SS[subscription_service]
+        SC[scheduler]
+        YDB[youtube_db]
+    end
+
+    subgraph Storage2
+        SQL2[(SQLite - youtube)]
+        MD2[Obsidian .md files]
+    end
+
+    subgraph External2
+        YT_API[YouTube / yt-dlp]
+        OR2[OpenRouter]
+    end
+
+    CHAT --> YR
+    YR --> YS
+    YR --> SS
+    YS --> YT_API
+    YS --> OR2
+    SS --> NS
+    NS --> MD2
+    SS --> YDB
+    YDB --> SQL2
+    SC --> SS
+```
 
 ## Data Flow: Chat Request
 
@@ -99,24 +142,36 @@ sequenceDiagram
 the-second-brain/
 ├── app/
 │   ├── __init__.py           # Flask app factory
-│   ├── config.py             # Env var loading (OpenRouter)
+│   ├── config.py             # Env var loading (OpenRouter, YouTube)
 │   ├── models/
-│   │   ├── db.py             # SQLite connection + queries
+│   │   ├── db.py             # SQLite connection + queries (messages)
+│   │   └── youtube_db.py     # SQLite layer (subscriptions, ingested_videos)
 │   ├── routes/
 │   │   ├── chat.py           # Chat, sessions, search endpoints
-│   │   └── health.py         # Health check endpoint
+│   │   ├── health.py         # Health check endpoint
+│   │   └── youtube.py        # YouTube ingestion & subscription endpoints
 │   ├── services/
-│   │   ├── ai_service.py     # LLM orchestration + RAG pipeline
+│   │   ├── ai_service.py     # LLM orchestration + RAG pipeline + lazy YT check
 │   │   ├── embedding_service.py  # SentenceTransformer + ChromaDB
+│   │   ├── youtube_service.py    # Transcript fetch, search, channel videos
+│   │   ├── note_service.py       # De-bloat transcript → structured .md
+│   │   ├── subscription_service.py  # Channel subscribe/unsub/auto-ingest
+│   │   ├── scheduler.py       # APScheduler periodic subscription check
 │   │   └── memory_service.py     # (stub, unused)
 │   └── static/
 │       ├── index.html         # Chat UI
-│       ├── style.css          # Styling
-│       └── script.js          # Frontend logic
+│       ├── style.css          # Styling (incl. YT result cards)
+│       └── script.js          # Frontend logic (incl. /yt command routing)
 ├── docs/                      # Documentation
 ├── tests/
 │   ├── conftest.py            # Pytest fixture
-│   └── test_app.py            # Health + index route tests
+│   ├── test_app.py            # Health + index route tests
+│   ├── test_youtube_db.py     # 9 tests — subscription CRUD, dedup, ingested videos
+│   ├── test_youtube_service.py # 12 tests — URL parsing, transcript, search
+│   ├── test_note_service.py   # 4 tests — de-bloat, file save
+│   ├── test_subscription_service.py # 5 tests — subscribe, check, ingest
+│   ├── test_youtube_routes.py # 4 tests — HTTP endpoints
+│   └── e2e_youtube_manual.py  # Manual E2E (skips without API keys)
 ├── project_detailes/          # Planning documents
 ├── schema.sql                 # Reference schema
 ├── requirements.txt           # Python deps

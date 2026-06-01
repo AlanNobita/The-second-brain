@@ -1,5 +1,8 @@
 import sqlite3
-import os 
+import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "second_brain.db")
 
@@ -42,12 +45,17 @@ def search_messages_fts(query, limit=20):
         return []
     conn = get_connection()
     safe = query.replace('"', '""')
-    rows = conn.execute(
-        "SELECT rowid, rank FROM messages_fts WHERE content MATCH ? ORDER BY rank LIMIT ?",
-        (safe, limit)
-    ).fetchall()
-    conn.close()
-    return [(r["rowid"], r["rank"]) for r in rows]
+    try:
+        rows = conn.execute(
+            "SELECT rowid, rank FROM messages_fts WHERE content MATCH ? ORDER BY rank LIMIT ?",
+            (safe, limit)
+        ).fetchall()
+        return [(r["rowid"], r["rank"]) for r in rows]
+    except sqlite3.OperationalError:
+        logger.warning("FTS5 query failed (falling back to LIKE): %s", query)
+        return []
+    finally:
+        conn.close()
 
 
 def save_message(session_id, role, content):

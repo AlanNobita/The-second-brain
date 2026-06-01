@@ -24,6 +24,32 @@ def init_db():
     conn.close()
 
 
+def init_fts():
+    conn = get_connection()
+    conn.execute("""
+        CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts
+        USING fts5(content)
+    """)
+    count = conn.execute("SELECT count(*) FROM messages_fts").fetchone()[0]
+    if count == 0:
+        conn.execute("INSERT INTO messages_fts(rowid, content) SELECT id, content FROM messages")
+    conn.commit()
+    conn.close()
+
+
+def search_messages_fts(query, limit=20):
+    if not query:
+        return []
+    conn = get_connection()
+    safe = query.replace('"', '""')
+    rows = conn.execute(
+        "SELECT rowid, rank FROM messages_fts WHERE content MATCH ? ORDER BY rank LIMIT ?",
+        (safe, limit)
+    ).fetchall()
+    conn.close()
+    return [(r["rowid"], r["rank"]) for r in rows]
+
+
 def save_message(session_id, role, content):
     conn = get_connection()
     cursor = conn.execute(

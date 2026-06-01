@@ -8,6 +8,7 @@ logger = logging.getLogger("yt_cron")
 
 REPO = Path(__file__).resolve().parent.parent
 os.chdir(str(REPO))
+sys.path.insert(0, str(REPO))
 os.environ.setdefault("OBSIDIAN_NOTES_PATH", str(REPO / "data" / "notes"))
 
 DB_PATH = REPO / "second_brain.db"

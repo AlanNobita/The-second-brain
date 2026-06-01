@@ -17,6 +17,15 @@ body.theme-light { background: #ffffff; color: #555; }
 .theme-light #graph-footer { background: #f8f9fa; border-top-color: #e0e0e0; }
 .theme-light .search-input { background: #fff; border-color: #e0e0e0; color: #555; }
 .theme-light .zoom-btn { background: rgba(240,240,240,0.9); border-color: #e0e0e0; color: #555; }
+.theme-light .sidebar-node-name { color: #1a1a2e; }
+.theme-light .sidebar-node-type { color: #888; }
+.theme-light .sidebar-node-desc { color: #555; }
+.theme-light .sidebar-rel-name { color: #1a1a2e; }
+.theme-light .sidebar-rel-target { color: #888; }
+.theme-light .sidebar-header { color: #888; }
+.theme-light .sidebar-empty { color: #888; }
+.theme-light .sidebar-rel-item { border-bottom-color: #e0e0e0; }
+.theme-light .sidebar-rel-item:hover { background: rgba(0,0,0,0.04); }
 
 /* GitHub Dark */
 body.theme-github-dark { background: #0d1117; color: #c9d1d9; }
@@ -25,6 +34,15 @@ body.theme-github-dark { background: #0d1117; color: #c9d1d9; }
 .theme-github-dark #graph-footer { background: #161b22; border-top-color: #30363d; }
 .theme-github-dark .search-input { background: #0d1117; border-color: #30363d; color: #c9d1d9; }
 .theme-github-dark .zoom-btn { background: rgba(22,27,34,0.9); border-color: #30363d; color: #c9d1d9; }
+.theme-github-dark .sidebar-node-name { color: #c9d1d9; }
+.theme-github-dark .sidebar-node-type { color: #484f58; }
+.theme-github-dark .sidebar-node-desc { color: #8b949e; }
+.theme-github-dark .sidebar-rel-name { color: #c9d1d9; }
+.theme-github-dark .sidebar-rel-target { color: #484f58; }
+.theme-github-dark .sidebar-header { color: #484f58; }
+.theme-github-dark .sidebar-empty { color: #484f58; }
+.theme-github-dark .sidebar-rel-item { border-bottom-color: #30363d; }
+.theme-github-dark .sidebar-rel-item:hover { background: rgba(48,54,61,0.5); }
 
 /* Obsidian */
 body.theme-obsidian { background: #faf8f5; color: #5c4f3f; }
@@ -33,6 +51,15 @@ body.theme-obsidian { background: #faf8f5; color: #5c4f3f; }
 .theme-obsidian #graph-footer { background: #f5f0eb; border-top-color: #e0d5c7; }
 .theme-obsidian .search-input { background: #fff; border-color: #e0d5c7; color: #5c4f3f; }
 .theme-obsidian .zoom-btn { background: rgba(245,240,235,0.9); border-color: #e0d5c7; color: #5c4f3f; }
+.theme-obsidian .sidebar-node-name { color: #5c4f3f; }
+.theme-obsidian .sidebar-node-type { color: #a09080; }
+.theme-obsidian .sidebar-node-desc { color: #7a6b5a; }
+.theme-obsidian .sidebar-rel-name { color: #5c4f3f; }
+.theme-obsidian .sidebar-rel-target { color: #a09080; }
+.theme-obsidian .sidebar-header { color: #a09080; }
+.theme-obsidian .sidebar-empty { color: #a09080; }
+.theme-obsidian .sidebar-rel-item { border-bottom-color: #e0d5c7; }
+.theme-obsidian .sidebar-rel-item:hover { background: rgba(0,0,0,0.04); }
 
 #app { display: flex; flex-direction: column; height: 100vh; }
 #topbar { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; flex-shrink: 0; }

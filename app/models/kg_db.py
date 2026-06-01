@@ -13,94 +13,112 @@ def _get_conn():
 
 def init_kg_db():
     conn = _get_conn()
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS entities (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL UNIQUE,
-            type TEXT NOT NULL DEFAULT 'concept',
-            description TEXT DEFAULT '',
-            created_at TEXT NOT NULL DEFAULT (datetime('now'))
-        );
-        CREATE TABLE IF NOT EXISTS relationships (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            source_entity_id INTEGER NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
-            target_entity_id INTEGER NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
-            relationship_type TEXT NOT NULL,
-            weight REAL DEFAULT 1.0,
-            created_at TEXT NOT NULL DEFAULT (datetime('now'))
-        );
-        CREATE INDEX IF NOT EXISTS idx_rel_source ON relationships(source_entity_id);
-        CREATE INDEX IF NOT EXISTS idx_rel_target ON relationships(target_entity_id);
-    """)
-    conn.commit()
-    conn.close()
+    try:
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS entities (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                type TEXT NOT NULL DEFAULT 'concept',
+                description TEXT DEFAULT '',
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+            CREATE TABLE IF NOT EXISTS relationships (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                source_entity_id INTEGER NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+                target_entity_id INTEGER NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+                relationship_type TEXT NOT NULL,
+                weight REAL DEFAULT 1.0,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+            CREATE INDEX IF NOT EXISTS idx_rel_source ON relationships(source_entity_id);
+            CREATE INDEX IF NOT EXISTS idx_rel_target ON relationships(target_entity_id);
+        """)
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def add_entity(name, type="concept", description=""):
     conn = _get_conn()
     try:
-        cur = conn.execute("INSERT INTO entities (name, type, description) VALUES (?, ?, ?)", (name, type, description))
-        conn.commit()
-        eid = cur.lastrowid
-    except sqlite3.IntegrityError:
-        row = conn.execute("SELECT id FROM entities WHERE name = ?", (name,)).fetchone()
-        eid = row["id"]
-    conn.close()
+        try:
+            cur = conn.execute("INSERT INTO entities (name, type, description) VALUES (?, ?, ?)", (name, type, description))
+            conn.commit()
+            eid = cur.lastrowid
+        except sqlite3.IntegrityError:
+            row = conn.execute("SELECT id FROM entities WHERE name = ?", (name,)).fetchone()
+            eid = row["id"]
+    finally:
+        conn.close()
     return eid
 
 
 def get_entity(entity_id):
     conn = _get_conn()
-    row = conn.execute("SELECT * FROM entities WHERE id = ?", (entity_id,)).fetchone()
-    conn.close()
+    try:
+        row = conn.execute("SELECT * FROM entities WHERE id = ?", (entity_id,)).fetchone()
+    finally:
+        conn.close()
     return dict(row) if row else None
 
 
 def get_all_entities():
     conn = _get_conn()
-    rows = conn.execute("SELECT * FROM entities ORDER BY name").fetchall()
-    conn.close()
+    try:
+        rows = conn.execute("SELECT * FROM entities ORDER BY name").fetchall()
+    finally:
+        conn.close()
     return [dict(r) for r in rows]
 
 
 def delete_entity(entity_id):
     conn = _get_conn()
-    conn.execute("DELETE FROM entities WHERE id = ?", (entity_id,))
-    conn.commit()
-    conn.close()
+    try:
+        conn.execute("DELETE FROM entities WHERE id = ?", (entity_id,))
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def add_relationship(source_entity_id, target_entity_id, relationship_type, weight=1.0):
     conn = _get_conn()
-    cur = conn.execute(
-        "INSERT INTO relationships (source_entity_id, target_entity_id, relationship_type, weight) VALUES (?, ?, ?, ?)",
-        (source_entity_id, target_entity_id, relationship_type, weight)
-    )
-    conn.commit()
-    rid = cur.lastrowid
-    conn.close()
+    try:
+        cur = conn.execute(
+            "INSERT INTO relationships (source_entity_id, target_entity_id, relationship_type, weight) VALUES (?, ?, ?, ?)",
+            (source_entity_id, target_entity_id, relationship_type, weight)
+        )
+        conn.commit()
+        rid = cur.lastrowid
+    finally:
+        conn.close()
     return rid
 
 
 def get_relationship(rel_id):
     conn = _get_conn()
-    row = conn.execute("SELECT * FROM relationships WHERE id = ?", (rel_id,)).fetchone()
-    conn.close()
+    try:
+        row = conn.execute("SELECT * FROM relationships WHERE id = ?", (rel_id,)).fetchone()
+    finally:
+        conn.close()
     return dict(row) if row else None
 
 
 def get_all_relationships():
     conn = _get_conn()
-    rows = conn.execute("SELECT * FROM relationships").fetchall()
-    conn.close()
+    try:
+        rows = conn.execute("SELECT * FROM relationships").fetchall()
+    finally:
+        conn.close()
     return [dict(r) for r in rows]
 
 
 def delete_relationship(rel_id):
     conn = _get_conn()
-    conn.execute("DELETE FROM relationships WHERE id = ?", (rel_id,))
-    conn.commit()
-    conn.close()
+    try:
+        conn.execute("DELETE FROM relationships WHERE id = ?", (rel_id,))
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def get_graph_data():
@@ -113,6 +131,8 @@ def get_graph_data():
 
 def search_entities(q):
     conn = _get_conn()
-    rows = conn.execute("SELECT * FROM entities WHERE name LIKE ?", (f"%{q}%",)).fetchall()
-    conn.close()
+    try:
+        rows = conn.execute("SELECT * FROM entities WHERE name LIKE ?", (f"%{q}%",)).fetchall()
+    finally:
+        conn.close()
     return [dict(r) for r in rows]

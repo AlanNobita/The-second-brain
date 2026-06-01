@@ -137,3 +137,60 @@ def test_hybrid_search_semantic_mode():
         assert len(results) > 0
         for r in results:
             assert r["_source"] == "semantic"
+
+
+def test_search_route_hybrid_default():
+    conn = get_connection()
+    conn.execute("INSERT INTO messages (session_id, role, content) VALUES ('s_route', 'user', 'route test content here')")
+    conn.commit()
+    conn.close()
+    init_fts()
+    with patch("app.services.embedding_service.semantic_search") as mock_vec:
+        mock_vec.return_value = {
+            "ids": [["1"]],
+            "distances": [[0.5]],
+            "metadatas": [[{"session_id": "s_route", "role": "user"}]]
+        }
+        from app import create_app
+        import os
+        os.environ["OPENROUTER_API_KEY"] = "test"
+        app = create_app()
+        client = app.test_client()
+        resp = client.get("/search?q=route")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert isinstance(data, list)
+
+
+def test_search_route_mode_semantic():
+    with patch("app.services.embedding_service.semantic_search") as mock_vec:
+        mock_vec.return_value = {
+            "ids": [[]],
+            "distances": [[]],
+            "metadatas": [[]]
+        }
+        from app import create_app
+        import os
+        os.environ["OPENROUTER_API_KEY"] = "test"
+        app = create_app()
+        client = app.test_client()
+        resp = client.get("/search?q=test&mode=semantic")
+        assert resp.status_code == 200
+
+
+def test_search_route_mode_keyword():
+    conn = get_connection()
+    conn.execute("INSERT INTO messages (session_id, role, content) VALUES ('s_route_k', 'user', 'keyword mode test')")
+    conn.commit()
+    conn.close()
+    init_fts()
+    from app import create_app
+    import os
+    os.environ["OPENROUTER_API_KEY"] = "test"
+    app = create_app()
+    client = app.test_client()
+    resp = client.get("/search?q=keyword&mode=keyword")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    for m in data:
+        assert m["_source"] == "keyword"

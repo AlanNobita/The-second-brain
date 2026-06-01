@@ -1,6 +1,6 @@
 from flask import Flask
 from .config import Config
-from .models.db import init_db
+from .models.db import init_db, init_fts
 from .models.youtube_db import init_youtube_db
 
 def create_app():
@@ -15,6 +15,7 @@ def create_app():
     # Initialize daatabase
     init_db()
     init_youtube_db()
+    init_fts()
 
     # Call the embedding_service
     init_embedding_service()

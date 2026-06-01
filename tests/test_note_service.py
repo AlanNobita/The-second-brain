@@ -38,6 +38,8 @@ def test_save_note_file():
     with tempfile.TemporaryDirectory() as tmpdir:
         path = save_note_file("# Test\n\nContent", "Test Video Title", "2026-06-01", output_dir=tmpdir)
         assert os.path.exists(path)
+        assert "2026-06-01" in os.path.basename(path)
+        assert "Test-Video-Title" in os.path.basename(path)
         with open(path, "r") as f:
             content = f.read()
-        assert "Test Video Title" in content or "# Test" in content
+        assert "# Test" in content

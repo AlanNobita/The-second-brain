@@ -13,6 +13,10 @@ def extract_video_id(url):
     parsed = urlparse(url)
     if parsed.hostname == "youtu.be":
         return parsed.path.strip("/")
+    path = parsed.path.strip("/")
+    for prefix in ("embed/", "shorts/", "v/"):
+        if path.startswith(prefix):
+            return path[len(prefix):]
     qs = parse_qs(parsed.query)
     return qs.get("v", [None])[0]
 
@@ -97,6 +101,24 @@ def search_youtube(query, max_results=5):
 
 def get_channel_videos(channel_url, max_results=5):
     try:
-        return search_youtube(channel_url, max_results)
+        result = subprocess.run(
+            ["yt-dlp", "--flat-playlist", "--dump-json", "--no-warnings",
+             "--playlist-end", str(max_results), channel_url],
+            capture_output=True, text=True, timeout=30
+        )
+        videos = []
+        for line in result.stdout.strip().split("\n"):
+            if not line:
+                continue
+            data = json.loads(line)
+            videos.append({
+                "video_id": data["id"],
+                "title": data["title"],
+                "channel": data.get("channel", data.get("uploader", "Unknown")),
+                "channel_url": channel_url,
+                "published_at": data.get("upload_date", ""),
+                "url": f"https://youtube.com/watch?v={data['id']}",
+            })
+        return videos[:max_results]
     except Exception:
         return []

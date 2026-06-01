@@ -54,6 +54,16 @@ def test_extract_video_id_from_shorts_url():
     assert vid == "dQw4w9WgXcQ"
 
 
+def test_strip_srt():
+    srt = "1\n00:00:01,000 --> 00:00:04,000\nHello <b>world</b>\n\n2\n00:00:05,000 --> 00:00:08,000\n<font color=\"#ccc\">How are you?</font>"
+    result = ys._strip_srt(srt)
+    assert "Hello" in result
+    assert "world" in result
+    assert "<b>" not in result
+    assert "How are you?" in result
+    assert "<font" not in result
+
+
 def test_extract_video_id_returns_none():
     vid = extract_video_id("https://example.com")
     assert vid is None

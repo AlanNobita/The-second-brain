@@ -1,8 +1,11 @@
-import re
+import logging
 import subprocess
 import json
 import os
+import tempfile
 from urllib.parse import urlparse, parse_qs
+
+logger = logging.getLogger(__name__)
 
 
 class TranscriptError(Exception):
@@ -40,28 +43,34 @@ def fetch_transcript(video_url):
         from youtube_transcript_api import YouTubeTranscriptApi
         transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
         return " ".join(segment["text"] for segment in transcript_list)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("youtube-transcript-api failed for %s: %s", video_url, e)
 
     try:
-        result = subprocess.run(
+        tmp = tempfile.NamedTemporaryFile(suffix=".srt", delete=False, prefix=f"yt_{video_id}_")
+        tmp_path = tmp.name
+        tmp.close()
+        subprocess.run(
             ["yt-dlp", "--skip-download", "--write-auto-sub", "--sub-lang", "en",
-             "--convert-subs", "srt", "-o", f"/tmp/{video_id}", video_url],
+             "--convert-subs", "srt", "-o", tmp_path.replace(".srt", ""), video_url],
             capture_output=True, text=True, timeout=60
         )
-        srt_path = f"/tmp/{video_id}.en.srt"
+        srt_path = tmp_path.replace(".srt", ".en.srt")
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
         if os.path.exists(srt_path):
             with open(srt_path, "r") as f:
                 raw = f.read()
-            os.remove(srt_path)
+            os.unlink(srt_path)
             return _strip_srt(raw)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("yt-dlp failed for %s: %s", video_url, e)
 
     raise TranscriptError(f"No captions available for {video_url}")
 
 
 def _strip_srt(srt_text):
+    import re as _re
     lines = srt_text.split("\n")
     text_lines = []
     for line in lines:
@@ -70,7 +79,8 @@ def _strip_srt(srt_text):
             continue
         if "-->" in line:
             continue
-        if line and not line.startswith("<"):
+        line = _re.sub(r"<[^>]+>", "", line).strip()
+        if line:
             text_lines.append(line)
     return " ".join(text_lines)
 
@@ -96,6 +106,7 @@ def search_youtube(query, max_results=5):
             })
         return videos[:max_results]
     except Exception as e:
+        logger.warning("YouTube search failed for %s: %s", query, e)
         return []
 
 
@@ -120,5 +131,6 @@ def get_channel_videos(channel_url, max_results=5):
                 "url": f"https://youtube.com/watch?v={data['id']}",
             })
         return videos[:max_results]
-    except Exception:
+    except Exception as e:
+        logger.warning("get_channel_videos failed for %s: %s", channel_url, e)
         return []

@@ -91,3 +91,16 @@ def search_messages(query):
     ).fetchall()
     conn.close()
     return [dict(row) for row in rows]
+
+
+def get_messages_by_ids(message_ids):
+    #Takes a list of message ids and returns the full message dicts
+    if not message_ids: 
+        return []
+    placeholders = ",".join("?" * len(message_ids))
+    conn = get_connection()
+    rows = conn.execute(f"SELECT * FROM messages WHERE id IN ({placeholders})", message_ids).fetchall()
+    conn.close()
+
+    messages = {row["id"]: dict(row) for row in rows}
+    return [messages[id_] for id_ in message_ids]

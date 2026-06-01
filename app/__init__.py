@@ -1,6 +1,7 @@
 from flask import Flask
 from .config import Config
 from .models.db import init_db
+from .services.embedding_service import init_embedding_service
 
 def create_app():
     app = Flask(__name__)
@@ -11,8 +12,13 @@ def create_app():
     # Initialize daatabase
     init_db()
 
+    # Call the embedding_service
+    init_embedding_service()
+
     # register blueprints (we'll add routes later)
     from .routes import chat
+    from .routes import health
+    app.register_blueprint(health.health_bp)
     app.register_blueprint(chat.chat_bp)
 
     return app 

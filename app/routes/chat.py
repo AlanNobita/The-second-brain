@@ -4,7 +4,8 @@ from ..services.ai_service import get_ai_response
 from uuid import uuid4
 from ..models.db import get_sessions, get_message
 from ..models.db import search_messages
-
+from ..services.embedding_service import semantic_search
+from ..models.db import get_messages_by_ids
 
 chat_bp = Blueprint("chat", __name__)
 
@@ -60,6 +61,8 @@ def find_message_with_keywords():
 
     if not query:
         return jsonify([])
-    results = search_messages(query=query)
+    results = semantic_search(query)
+    message_ids = [int(id_) for id_ in results["ids"][0]]
+    messages = get_messages_by_ids(message_ids)
 
-    return jsonify(results)
+    return jsonify(messages)

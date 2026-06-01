@@ -174,3 +174,26 @@ body {
     0%, 80%, 100% { transform: scale(0); }
     40% { transform: scale(1); }
 }
+
+.yt-result {
+    line-height: 1.7;
+    font-size: 13px;
+}
+.yt-result strong {
+    font-size: 14px;
+}
+.yt-ingest-link {
+    color: #007aff;
+    text-decoration: none;
+    font-weight: 600;
+}
+.yt-ingest-link:hover {
+    text-decoration: underline;
+}
+.message.assistant a[target="_blank"] {
+    color: #555;
+    text-decoration: none;
+}
+.message.assistant a[target="_blank"]:hover {
+    text-decoration: underline;
+}

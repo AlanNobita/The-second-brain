@@ -1,5 +1,5 @@
 import pytest
-from app.models.db import get_connection, init_db, init_fts, search_messages_fts
+from app.models.db import get_connection, init_db, init_fts, search_messages_fts, save_message
 
 
 @pytest.fixture(autouse=True)
@@ -50,3 +50,21 @@ def test_fts_syntax_error_returns_empty():
     """Malformed FTS5 query should not crash, return empty instead"""
     results = search_messages_fts('"unclosed')
     assert results == []
+
+
+def test_fts_auto_sync_on_insert():
+    mid = save_message("s1", "user", "unique phrase for testing")
+    conn = get_connection()
+    row = conn.execute("SELECT rowid FROM messages_fts WHERE content MATCH 'unique phrase'").fetchone()
+    conn.close()
+    assert row is not None
+    assert row["rowid"] == mid
+
+
+def test_fts_sync_preserves_existing():
+    mid = save_message("s2", "assistant", "something else entirely")
+    conn = get_connection()
+    row = conn.execute("SELECT rowid FROM messages_fts WHERE content MATCH 'entirely'").fetchone()
+    conn.close()
+    assert row is not None
+    assert row["rowid"] == mid

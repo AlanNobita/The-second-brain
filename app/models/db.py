@@ -36,6 +36,13 @@ def init_fts():
     count = conn.execute("SELECT count(*) FROM messages_fts").fetchone()[0]
     if count == 0:
         conn.execute("INSERT INTO messages_fts(rowid, content) SELECT id, content FROM messages")
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS messages_fts_insert
+        AFTER INSERT ON messages
+        BEGIN
+            INSERT INTO messages_fts(rowid, content) VALUES (new.id, new.content);
+        END
+    """)
     conn.commit()
     conn.close()
 

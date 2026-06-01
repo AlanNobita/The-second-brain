@@ -3,6 +3,7 @@ from ..services.kg_service import (
     create_entity, list_entities, get_entity_by_id, delete_entity,
     create_relationship, list_relationships, delete_relationship,
     extract_triples, get_graph_data, search_entities,
+    _parse_triples_from_text,
 )
 
 kg_bp = Blueprint("kg", __name__)
@@ -74,7 +75,11 @@ def delete_relation_route(rel_id):
 @kg_bp.route("/kg/extract", methods=["POST"])
 def extract_route():
     data = request.get_json()
-    triples = data.get("triples", [])
+    triples = []
+    if "triples" in data:
+        triples = data["triples"]
+    elif "text" in data:
+        triples = _parse_triples_from_text(data["text"])
     result = extract_triples(triples)
     return jsonify(result), 201
 

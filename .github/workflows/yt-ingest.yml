@@ -1,0 +1,62 @@
+name: YouTube Ingestion Cron
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      OPENROUTER_BASE_URL: ${{ secrets.OPENROUTER_BASE_URL }}
+      OPENROUTER_MODEL: ${{ secrets.OPENROUTER_MODEL }}
+      YT_CHECK_INTERVAL_HOURS: 24
+      YT_MAX_PER_CHECK: 5
+      OBSIDIAN_NOTES_PATH: data/notes
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Download previous DB
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: second-brain-db
+          path: ./
+
+      - name: Run ingestion
+        run: python scripts/yt_cron.py
+
+      - name: Upload DB artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: second-brain-db
+          path: second_brain.db
+          retention-days: 30
+
+      - name: Commit new notes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/notes/
+          if git diff --cached --quiet; then
+            echo "No new notes to commit"
+          else
+            git commit -m "chore: ingest YouTube notes [skip ci]"
+            git push
+          fi

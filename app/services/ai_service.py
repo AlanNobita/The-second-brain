@@ -64,7 +64,7 @@ def get_ai_response(session_id, user_message):
         base_url=current_app.config["OPENROUTER_BASE_URL"],
     )
     response = client.chat.completions.create(
-        model="nvidia/nemotron-3-super-120b-a12b:free",
+        model=current_app.config.get("OPENROUTER_MODEL", "deepseek-v4-flash-free"),
         messages=messages #type: ignore
     )
     ai_content = response.choices[0].message.content

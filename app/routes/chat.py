@@ -1,5 +1,6 @@
 from flask import Blueprint
-from flask import jsonify, request
+from flask import jsonify, request, send_from_directory
+import os
 from ..services.ai_service import get_ai_response
 from uuid import uuid4
 from ..models.db import get_sessions, get_message
@@ -10,7 +11,8 @@ chat_bp = Blueprint("chat", __name__)
 
 @chat_bp.route("/")
 def index():
-    return "Hello from the Second brain"
+    static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
+    return send_from_directory(static_dir, "index.html")
 
 @chat_bp.route("/chat/send", methods=["POST"])
 def send_message():

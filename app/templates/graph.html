@@ -1,44 +1,80 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Knowledge Graph — Second Brain</title>
+  <link rel="stylesheet" href="/static/css/main.css">
   <link rel="stylesheet" href="/static/css/graph.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+          colors: {
+            deep: '#0B0D15', surface: '#13151D', elevated: '#1C1E2A',
+            accent: { DEFAULT: '#6366F1', hover: '#5558E6', soft: 'rgba(99,102,241,0.12)' },
+            cyan: { DEFAULT: '#06B6D4', soft: 'rgba(6,182,212,0.1)' },
+            text: { primary: '#EDEDEF', secondary: '#8A8F98', tertiary: '#565870' },
+          },
+        }
+      }
+    }
+  </script>
   <script src="https://unpkg.com/vis-network@9.1.9/dist/vis-network.min.js"></script>
 </head>
-<body class="theme-tokyo-night">
+<body class="dark">
   <div id="app">
-    <div id="topbar">
-      <div class="topbar-left">
-        <span class="topbar-icon">☰</span>
-        <span class="topbar-title">Knowledge Graph</span>
-      </div>
-      <div class="topbar-center">
-        <span class="search-icon">🔍</span>
-        <input id="search-input" type="text" placeholder="Search concepts..." class="search-input">
-      </div>
-      <div class="topbar-right">
-        <button id="theme-toggle" class="icon-btn" title="Toggle theme">🎨</button>
-      </div>
-    </div>
-    <div id="main">
-      <div id="graph-container"></div>
-      <div id="sidebar">
-        <div class="sidebar-header">Node Details</div>
-        <div id="sidebar-content">
-          <div class="sidebar-empty">Select a node to view details</div>
+    <header id="topbar" class="flex items-center justify-between px-5 py-3 border-b" style="background: var(--surface); border-color: var(--border);">
+      <div class="flex items-center gap-3">
+        <a href="/" class="flex items-center gap-2 text-sm font-medium transition-colors duration-150" style="color: var(--text-secondary);">
+          <svg width="16" height="16" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M7.5 1v13M1 7.5h13"/></svg>
+        </a>
+        <div class="flex items-center gap-2.5">
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold" style="background: var(--accent-soft); color: var(--accent);">KG</div>
+          <span class="text-sm font-semibold">Knowledge Graph</span>
         </div>
       </div>
-    </div>
-    <div id="graph-footer">
-      <div id="stats"><span id="node-count">0</span> concepts · <span id="edge-count">0</span> relationships</div>
-      <div id="zoom-controls">
-        <button class="zoom-btn" id="zoom-in" title="Zoom in">+</button>
-        <button class="zoom-btn" id="zoom-out" title="Zoom out">−</button>
-        <button class="zoom-btn" id="zoom-reset" title="Reset view">⟲</button>
+      <div class="flex items-center gap-2 flex-1 max-w-sm mx-4">
+        <div class="relative w-full">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2" width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.2" style="color: var(--text-tertiary);"><circle cx="6" cy="6" r="4.5"/><path d="M10 10l3.5 3.5"/></svg>
+          <input id="search-input" type="text" placeholder="Search concepts..." class="w-full h-9 pl-9 pr-3 text-sm rounded-lg outline-none transition-all duration-150" style="background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--text);">
+        </div>
       </div>
+      <div class="flex items-center gap-1">
+        <button id="theme-toggle" class="w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-150 hover:bg-white/5 active:scale-95" title="Toggle theme" style="color: var(--text-secondary);">
+          <svg id="theme-icon-dark" width="16" height="16" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="7.5" cy="7.5" r="3"/><path d="M7.5 1v2M7.5 12v2M1 7.5h2M12 7.5h2M3 3l1.5 1.5M10.5 10.5L12 12M3 12l1.5-1.5M10.5 4.5L12 3"/></svg>
+          <svg id="theme-icon-light" width="16" height="16" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.2" style="display:none;"><path d="M7.5 1v1M7.5 13v1M1 7.5h1M13 7.5h1M3.5 3.5l.7.7M10.8 10.8l.7.7M3.5 11.5l.7-.7M10.8 4.2l.7-.7"/><circle cx="7.5" cy="7.5" r="3"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div id="main">
+      <div id="graph-container" class="flex-1 relative"></div>
+
+      <aside id="sidebar" class="glass w-[300px] flex-shrink-0 border-l overflow-y-auto z-10" style="border-color: var(--border);">
+        <div class="px-5 py-4 border-b" style="border-color: var(--border);">
+          <div class="text-xs font-semibold uppercase tracking-widest" style="color: var(--text-tertiary);">Node Details</div>
+        </div>
+        <div id="sidebar-content" class="p-5">
+          <div class="text-sm text-center py-12" style="color: var(--text-tertiary);">Select a node to view details</div>
+        </div>
+      </aside>
     </div>
+
+    <footer id="graph-footer" class="flex items-center justify-between px-5 py-3 border-t" style="background: var(--surface); border-color: var(--border);">
+      <div id="stats" class="text-xs" style="color: var(--text-tertiary);">
+        <span id="node-count" class="font-semibold" style="color: var(--text);">0</span> concepts ·
+        <span id="edge-count" class="font-semibold" style="color: var(--text);">0</span> relationships
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="zoom-in" class="w-8 h-8 flex items-center justify-center rounded-lg text-sm transition-all duration-150 hover:bg-white/5 active:scale-90" style="background: var(--elevated); border: 1px solid var(--border); color: var(--text-secondary);" title="Zoom in">+</button>
+        <button id="zoom-out" class="w-8 h-8 flex items-center justify-center rounded-lg text-sm transition-all duration-150 hover:bg-white/5 active:scale-90" style="background: var(--elevated); border: 1px solid var(--border); color: var(--text-secondary);" title="Zoom out">−</button>
+        <button id="zoom-reset" class="w-8 h-8 flex items-center justify-center rounded-lg text-sm transition-all duration-150 hover:bg-white/5 active:scale-90" style="background: var(--elevated); border: 1px solid var(--border); color: var(--text-secondary);" title="Reset view">⟲</button>
+      </div>
+    </footer>
   </div>
   <script src="/static/js/graph.js"></script>
 </body>

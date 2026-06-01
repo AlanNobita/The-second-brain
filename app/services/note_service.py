@@ -7,24 +7,23 @@ import requests
 
 
 def debloat_and_structure(transcript, video_title, channel):
-    system_prompt = """You are a note-taking AI. Extract substance from a YouTube transcript.
+    system_prompt = """You are a note-taking AI. Convert this YouTube transcript into a well-organized, straightforward reference note.
 
-RULES (strict):
-1. Extract ONLY content present in the transcript. No additions, inferences, or summaries.
-2. Remove: greetings ("hey guys", "welcome back"), sponsor segments, channel plugs, CTAs, off-topic banter.
+RULES:
+1. Rewrite conversational speech into clear, detailed explanatory prose. Remove: greetings ("hey guys", "welcome back"), sponsor segments, channel plugs, CTAs, off-topic banter.
+2. Convert first-person narrative ("I think", "we built", "in my experience") to third-person ("the author explains", "they built", "according to the speaker") throughout.
 3. Preserve: ALL data points, arguments, examples, code, quotes, statistics, references, tools, people, timelines.
 4. Organize by ## topic sections. Use natural topic shifts in the transcript as boundaries.
 5. Code blocks: verbatim with ``` fences.
-6. Do NOT condense. Full substance without filler.
-7. Do not guess. Omit or mark [unclear] if not in transcript.
-8. No imaginary content. No elaborating on what the speaker said.
+6. Stay faithful to the transcript's facts. Do NOT add fabricated information or elaborate beyond what was said. Rephrase, don't invent.
+7. If something is unclear from the transcript, mark [unclear].
 
 Format:
 ## Key Concepts
 - ...
 
 ## Notes
-[de-bloated full context organized by topic]
+[rewritten transcript in third-person, organized by topic]
 
 ## Takeaways
 - ...
@@ -38,6 +37,8 @@ Format:
             base_url=current_app.config["OPENROUTER_BASE_URL"],
         )
         model = current_app.config.get("OPENROUTER_MODEL", "nvidia/nemotron-3-super-120b-a12b:free")
+
+        # Stage 1: Filter and rewrite
         response = client.chat.completions.create(
             model=model,
             messages=[
@@ -45,10 +46,36 @@ Format:
                 {"role": "user", "content": f"Title: {video_title}\nChannel: {channel}\n\nTranscript:\n{transcript}"}
             ]
         )
-        return response.choices[0].message.content
+        filtered = response.choices[0].message.content
+
+        # Stage 2: Merge — supplement filtered version with any content the raw transcript has that was dropped
+        try:
+            merge_prompt = """You are a transcript merge assistant. Below are two versions of the same transcript:
+- FILTERED: a cleaned, third-person rewrite organized by topic (this is the primary version)
+- RAW: the original raw transcript (contains unedited speech)
+
+Scan the RAW transcript for any substantive content that was dropped from the FILTERED version.
+This includes: explanations, data points, examples, quotes, statistics, references, tools, people, timelines, reasoning, context.
+
+Insert any missing content into the appropriate ## section of the FILTERED version.
+Maintain third-person perspective. Keep the structure and topic organization intact.
+Do not add fluff, greetings, sponsor segments, CTAs, or duplicate content already present."""
+
+            response2 = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": merge_prompt},
+                    {"role": "user", "content": f"FILTERED:\n{filtered}\n\nRAW:\n{transcript}"}
+                ],
+                max_tokens=4096,
+            )
+            return response2.choices[0].message.content
+        except (APIError, APITimeoutError):
+            return filtered
+
     except (APIError, APITimeoutError, requests.RequestException, KeyError, RuntimeError) as e:
         import logging
-        logging.getLogger(__name__).warning("OpenRouter de-bloat failed: %s", e)
+        logging.getLogger(__name__).warning("AI de-bloat failed: %s", e)
         return _fallback_debloat(transcript, video_title, channel)
 
 

@@ -1,9 +1,10 @@
 from flask import Flask
 from .config import Config
 from .models.db import init_db
-from .services.embedding_service import init_embedding_service
 
 def create_app():
+    from .services.embedding_service import init_embedding_service
+
     app = Flask(__name__)
 
     # store config on the app so routes can access it

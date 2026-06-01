@@ -6,14 +6,30 @@ Spend less time tracking knowledge — more time using it, thinking, and creatin
 
 ## Quick Start
 
+Requires `uv` (install via `pip install uv`).
+
 ```bash
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+uv pip install -r requirements.txt
 cp .example.env .env   # add your OPENROUTER_API_KEY
 python run.py
 ```
 
 Open `http://localhost:5000`
+
+## Features
+
+| Feature | Status |
+|---|---|
+| AI chat with session context | ✅ |
+| Persistent message storage (SQLite) | ✅ |
+| Semantic search with RAG (ChromaDB) | ✅ |
+| Cross-session memory retrieval | ✅ |
+| YouTube ingestion (transcript, search) | ✅ |
+| YouTube channel subscriptions | ✅ |
+| Obsidian note export | ✅ |
+| Knowledge Graph (entities + relationships) | 🔄 Phase 5 |
+| Hybrid search (FTS5 + vector) | 🔄 Phase 4+ |
 
 ## Documentation
 

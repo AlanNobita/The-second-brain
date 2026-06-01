@@ -12,6 +12,7 @@ graph TB
         RP[Routes / Blueprints]
         SV[Services]
         MD[Models / Data Access]
+        KG[Knowledge Graph]
     end
 
     subgraph Storage
@@ -26,7 +27,10 @@ graph TB
 
     UI --> RP
     RP --> SV
+    RP --> KG
     SV --> MD
+    KG --> MD
+    KG --> SV
     MD --> SQL
     SV --> CHR
     SV --> OR
@@ -107,6 +111,34 @@ graph TB
     SC --> SS
 ```
 
+### Knowledge Graph
+
+```mermaid
+graph TB
+    subgraph User_KG
+        KG_CMD[/kg chat commands]
+        GRAPH_PAGE[/graph page]
+    end
+
+    subgraph Backend_KG
+        KR[kg routes]
+        KS[kg_service]
+        KDB[kg_db]
+    end
+
+    subgraph Storage_KG
+        SQL_KG[(SQLite - entities, relationships)]
+        VIS[vis.js network]
+    end
+
+    KG_CMD --> KR
+    GRAPH_PAGE --> KR
+    KR --> KS
+    KS --> KDB
+    KDB --> SQL_KG
+    KR --> VIS
+```
+
 ## Data Flow: Chat Request
 
 ```mermaid
@@ -145,11 +177,13 @@ the-second-brain/
 │   ├── config.py             # Env var loading (OpenRouter, YouTube)
 │   ├── models/
 │   │   ├── db.py             # SQLite connection + queries (messages)
-│   │   └── youtube_db.py     # SQLite layer (subscriptions, ingested_videos)
+│   │   ├── youtube_db.py     # SQLite layer (subscriptions, ingested_videos)
+│   │   └── kg_db.py          # SQLite layer (entities, relationships)
 │   ├── routes/
 │   │   ├── chat.py           # Chat, sessions, search endpoints
 │   │   ├── health.py         # Health check endpoint
-│   │   └── youtube.py        # YouTube ingestion & subscription endpoints
+│   │   ├── youtube.py        # YouTube ingestion & subscription endpoints
+│   │   └── kg.py             # Knowledge Graph REST endpoints + /graph page
 │   ├── services/
 │   │   ├── ai_service.py     # LLM orchestration + RAG pipeline + lazy YT check
 │   │   ├── embedding_service.py  # SentenceTransformer + ChromaDB
@@ -157,10 +191,15 @@ the-second-brain/
 │   │   ├── note_service.py       # De-bloat transcript → structured .md
 │   │   ├── subscription_service.py  # Channel subscribe/unsub/auto-ingest
 │   │   ├── scheduler.py       # APScheduler periodic subscription check
-│   │   └── memory_service.py     # (stub, unused)
+│   │   ├── memory_service.py     # (stub, unused)
+│   │   └── kg_service.py     # KG entity/relationship CRUD + triple extraction
 │   └── static/
 │       ├── index.html         # Chat UI
 │       ├── style.css          # Styling (incl. YT result cards)
+│       ├── js/
+│       │   └── graph.js        # vis.js graph visualization
+│       ├── css/
+│       │   └── graph.css        # Graph page themes (4 color schemes)
 │       └── script.js          # Frontend logic (incl. /yt command routing)
 ├── docs/                      # Documentation
 ├── tests/
@@ -171,7 +210,10 @@ the-second-brain/
 │   ├── test_note_service.py   # 4 tests — de-bloat, file save
 │   ├── test_subscription_service.py # 5 tests — subscribe, check, ingest
 │   ├── test_youtube_routes.py # 4 tests — HTTP endpoints
-│   └── e2e_youtube_manual.py  # Manual E2E (skips without API keys)
+│   ├── e2e_youtube_manual.py  # Manual E2E (skips without API keys)
+│   ├── test_kg_db.py          # 7 tests — entity/relationship CRUD, dedup, cascade
+│   ├── test_kg_service.py     # 6 tests — service-layer CRUD, triple extraction
+│   └── test_kg_routes.py      # 5 tests — HTTP endpoints
 ├── project_detailes/          # Planning documents
 ├── schema.sql                 # Reference schema
 ├── requirements.txt           # Python deps
@@ -191,6 +233,29 @@ the-second-brain/
 | `created_at` | TEXT | Auto-set timestamp |
 
 Index: `idx_messages_session_id` on `session_id`
+
+### entities
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | INTEGER PK | Auto-incrementing ID |
+| `name` | TEXT UNIQUE | Entity name (dedup via UNIQUE constraint) |
+| `type` | TEXT | Entity type (e.g., concept, language, framework) |
+| `description` | TEXT | Optional description |
+| `created_at` | TEXT | Auto-set timestamp |
+
+### relationships
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | INTEGER PK | Auto-incrementing ID |
+| `source_entity_id` | INTEGER FK | References `entities(id)` ON DELETE CASCADE |
+| `target_entity_id` | INTEGER FK | References `entities(id)` ON DELETE CASCADE |
+| `relationship_type` | TEXT | Label for the edge |
+| `weight` | REAL | Edge weight (default 1.0) |
+| `created_at` | TEXT | Auto-set timestamp |
+
+Indexes: `idx_rel_source`, `idx_rel_target`
 
 ## ChromaDB Schema
 

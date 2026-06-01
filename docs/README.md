@@ -18,9 +18,9 @@ Second Brain solves **information overload and fragmented knowledge**. Unlike st
 | YouTube ingestion (transcript, de-bloat, search) | ✅ |
 | YouTube channel subscriptions (auto-ingest) | ✅ |
 | Obsidian note export | ✅ |
-| Knowledge Graph (concepts + relationships) | ❌ Phase 5 |
+| Knowledge Graph (concepts + relationships) | ✅ |
 | Proactive agents & daily reflection | ❌ Phase 6 |
-| Hybrid search (FTS5 + vector) | ❌ Phase 4+ |
+| Hybrid search (FTS5 + vector) | ✅ |
 
 ## Tech Stack
 
@@ -40,10 +40,12 @@ Second Brain solves **information overload and fragmented knowledge**. Unlike st
 cd the-second-brain
 
 # Create virtual env
-python -m venv .venv && source .venv/bin/activate
+uv venv .venv && source .venv/bin/activate
 
 # Install dependencies
-pip install -r requirements.txt
+uv pip install -r requirements.txt
+
+# Install uv first: pip install uv
 
 # Set up environment
 cp .example.env .env
@@ -57,7 +59,7 @@ Open `http://localhost:5000` in a browser.
 
 ## Project Status
 
-Actively developed. Phases 0-4 complete plus YouTube ingestion pipeline. Phase 5 (Knowledge Graph) is the next milestone.
+Actively developed. Phases 0-5 complete plus YouTube ingestion pipeline and Hybrid Search. Phase 6 (Proactive Agents) is the next milestone.
 
 ## Documentation
 

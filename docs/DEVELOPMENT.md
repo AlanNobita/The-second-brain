@@ -9,11 +9,11 @@
 
 ```bash
 # Virtual environment
-python -m venv .venv
+uv venv .venv
 source .venv/bin/activate
 
 # Install dependencies
-pip install -r requirements.txt
+uv pip install -r requirements.txt
 
 # Environment config
 cp .example.env .env
@@ -45,11 +45,8 @@ First startup creates:
 ## Testing
 
 ```bash
-# Install test dependency
-pip install pytest
-
-# Run tests
-pytest
+# Run tests (pytest comes with uv)
+uv run pytest
 ```
 
 ### Test Coverage
@@ -71,6 +68,14 @@ pytest
 | `test_subscription_service.py` | 5 | Subscribe/unsub, due checking, auto-ingest pipeline |
 | `test_youtube_routes.py` | 4 | HTTP 200/400 responses for all endpoints |
 | `e2e_youtube_manual.py` | 6 | Full pipeline (skips if API keys missing) |
+
+**Knowledge Graph (21 unit tests):**
+
+| Test file | Tests | What it covers |
+|---|---|---|
+| `test_kg_db.py` | 7 | Entity/relationship CRUD, dedup, cascade delete, graph data, search |
+| `test_kg_service.py` | 6 | Service-layer CRUD, triple extraction, dedup, entity lookup, relationship delete |
+| `test_kg_routes.py` | 5 | HTTP 200/201/400/404, entity CRUD, relationship create, triple extraction |
 
 ```bash
 # Run all YouTube tests
@@ -95,8 +100,22 @@ python tests/e2e_youtube_manual.py
 ```
 app/
 ├── models/     # Data access layer — raw SQL
-├── services/   # Business logic — AI, embeddings
+│   ├── db.py           # Messages CRUD + FTS5
+│   ├── youtube_db.py   # YouTube subscriptions
+│   └── kg_db.py        # Knowledge Graph entities + relationships
+├── services/   # Business logic — AI, embeddings, KG
+│   ├── ai_service.py
+│   ├── embedding_service.py
+│   ├── youtube_service.py
+│   ├── note_service.py
+│   ├── subscription_service.py
+│   ├── scheduler.py
+│   └── kg_service.py   # KG CRUD + triple extraction
 └── routes/     # HTTP layer — Flask blueprints
+    ├── chat.py
+    ├── health.py
+    ├── youtube.py
+    └── kg.py           # KG REST endpoints + /graph page
 ```
 
 Key rules:
@@ -158,6 +177,13 @@ Transcript fetch fallback chain:
 
 YouTube search and channel listing use `yt-dlp` directly (no API key required for basic usage).
 
+### Knowledge Graph Services
+
+| Service | File | Role |
+|---|---|---|
+| **kg_db** | `app/models/kg_db.py` | SQLite tables: `entities`, `relationships`; CRUD, graph data query, search |
+| **kg_service** | `app/services/kg_service.py` | Entity/relationship CRUD wrappers, triple extraction, text parsing |
+
 ### `models/db.py`
 
 Raw SQLite data access:
@@ -171,7 +197,7 @@ Raw SQLite data access:
 
 ## Frontend (`app/static/`)
 
-Vanilla JS with no build step. CDN dependency: `marked.js` (not currently used in rendering, loaded for future use).
+Vanilla JS with no build step. CDN dependencies: `marked.js`, `vis-network` (for Knowledge Graph).
 
 ### Key Functions (`script.js`)
 
@@ -179,6 +205,7 @@ Vanilla JS with no build step. CDN dependency: `marked.js` (not currently used i
 |---|---|---|
 | `sendMessage()` | Click / Enter | Intercepts `/` commands, else POST to `/chat/send` |
 | `handleYTCommand()` | `/yt` prefix | Routes `/ytsearch`, `/ytchannel`, `/ytsub`, `/ytunsub`, `/ytsubs` to API |
+| `handleKGCommand()` | `/kg` prefix | Routes `/kg extract`, `/kg add`, `/kg relate`, `/kg list` to KG API |
 | `loadSessions()` | Page load, after send | Fills sidebar from `/sessions` |
 | `loadSession(id)` | Click session | GET `/chat/history`, renders messages |
 | `performSearch(query)` | Type in search box | GET `/search`, renders results |
@@ -212,27 +239,10 @@ Areas to address for production deployment:
 |---|---|---|
 | 0-4 | Foundation, CRUD, AI Chat, Semantic Memory | ✅ |
 | YouTube | Transcript ingestion, de-bloat, subscriptions, scheduler | ✅ |
+| Hybrid Search | FTS5 keyword + ChromaDB vector blend (50/50) | ✅ |
+| Phase 5 | Knowledge Graph — entities, relationships, vis.js graph page | ✅ |
 
 ## Upcoming Phases
-
-### Phase 5: Knowledge Graph
-
-```sql
--- Proposed schema additions
-CREATE TABLE concepts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT UNIQUE NOT NULL,
-    description TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
-);
-
-CREATE TABLE relationships (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    source_id INTEGER REFERENCES concepts(id),
-    target_id INTEGER REFERENCES concepts(id),
-    relationship_type TEXT NOT NULL
-);
-```
 
 ### Phase 6: Proactive Agents
 

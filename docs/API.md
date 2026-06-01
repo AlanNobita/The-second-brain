@@ -289,6 +289,142 @@ GET /yt/subscriptions
 
 Subscriptions are checked every 6 hours (configurable via `YT_CHECK_INTERVAL_HOURS`). When a chat message is sent, a lazy background check also runs to catch new videos between scheduler intervals.
 
+## Knowledge Graph
+
+### 1. GET /kg/graph
+
+Returns graph data as JSON (nodes + edges).
+
+**Query Parameters:**
+
+| Parameter | Required | Description |
+|---|---|---|
+| `q` | no | Search query — returns all entities but focuses view on matching entity |
+
+**Response** `200 OK`:
+
+```json
+{
+    "nodes": [{"id": 1, "label": "Python", "title": "language", "description": "A programming language"}],
+    "edges": [{"from": 1, "to": 2, "label": "related to", "value": 1.0}],
+    "focus_id": 1
+}
+```
+
+The `focus_id` field is only present when `?q=` is provided.
+
+### 2. GET /graph
+
+Returns the interactive graph HTML page.
+
+### 3. POST /kg/entity
+
+Create a new entity.
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | yes | Entity name (unique) |
+| `type` | string | no | Entity type (default: "concept") |
+| `description` | string | no | Description text |
+
+**Response** `201 Created`:
+
+```json
+{"id": 1, "name": "Python", "type": "language", "description": "", "created_at": "2026-06-01 12:00:00"}
+```
+
+### 4. GET /kg/entity/\<id\>
+
+Get a single entity by ID.
+
+**Response** `200 OK` — same shape as POST response.
+**Error** `404` if not found.
+
+### 5. DELETE /kg/entity/\<id\>
+
+Delete an entity and all its relationships (CASCADE).
+
+**Response** `200 OK`:
+
+```json
+{"status": "ok"}
+```
+
+### 6. POST /kg/relation
+
+Create a relationship between two entities.
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `source_name` or `source` | string | yes | Source entity name |
+| `target_name` or `target` | string | yes | Target entity name |
+| `relationship_type` | string | no | Type (default: "related to") |
+| `weight` | float | no | Edge weight (default: 1.0) |
+
+Creates entities if they don't exist.
+
+**Response** `201 Created`:
+
+```json
+{
+    "id": 1, "source_entity_id": 1, "target_entity_id": 2,
+    "relationship_type": "related to", "weight": 1.0,
+    "created_at": "2026-06-01 12:00:00"
+}
+```
+
+### 7. DELETE /kg/relation/\<id\>
+
+Delete a relationship.
+
+**Response** `200 OK`:
+
+```json
+{"status": "ok"}
+```
+
+### 8. POST /kg/extract
+
+Extract triples from structured data or free text. Supports two input formats:
+
+**Format A — Triples:**
+
+```json
+{"triples": [["Python", "is a", "language"], ["Flask", "is a", "framework"]]}
+```
+
+**Format B — Text (auto-parsed):**
+
+```json
+{"text": "Python is a language\nFlask | is a | framework\nTransformers relates to NLP"}
+```
+
+Text parsing supports:
+- Pipe-separated: `A \| B \| C`
+- Natural language: `A is a type of B`, `A relates to B`, `A is a B`
+
+**Response** `201 Created`:
+
+```json
+{"entities_created": 3, "relationships_created": 2}
+```
+
+### 9. GET /kg/entities
+
+List all entities.
+
+**Response** `200 OK`:
+
+```json
+[
+    {"id": 1, "name": "Python", "type": "language", "description": "", "created_at": "..."}
+]
+```
+
 ## Error Responses
 
 All endpoints return standard HTTP status codes:
@@ -296,6 +432,7 @@ All endpoints return standard HTTP status codes:
 | Code | Meaning |
 |---|---|
 | 200 | Success |
+| 201 | Created |
 | 400 | Missing required parameter |
 | 404 | Route not found |
 | 500 | Server error (AI service failure, DB error) |

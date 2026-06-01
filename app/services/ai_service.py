@@ -5,10 +5,25 @@ from ..models.db import save_message, get_message
 from .embedding_service import store_embedding
 from .embedding_service import semantic_search
 from ..models.db import get_messages_by_ids
+from threading import Thread
+import logging
+
+logger = logging.getLogger(__name__)
+
+def _lazy_youtube_check():
+    try:
+        from .subscription_service import check_due_subscriptions
+        result = check_due_subscriptions()
+        if result and result.get("ingested_count", 0) > 0:
+            logger.info("Lazy YouTube check ingested %s videos", result["ingested_count"])
+    except Exception as e:
+        logger.debug("Lazy YouTube check skipped: %s", e)
 
 def get_ai_response(session_id, user_message):
+    # Lazy YouTube check in background
+    Thread(target=_lazy_youtube_check, daemon=True).start()
+
     # Save user message
-    # save_message(session_id, "user", user_message)
     msg_id = save_message(session_id=session_id, role="user", content=user_message)
     store_embedding(message_id=msg_id, session_id=session_id, text=user_message, role="user")
 

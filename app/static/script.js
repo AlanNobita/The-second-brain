@@ -202,9 +202,16 @@ async function performSearch(query) {
         const sessionLabel = "Session: " + m.session_id.slice(0, 8) + "...";
         const div = document.createElement("div");
         div.className = "message " + m.role;
-        div.textContent = "[" + sessionLabel + "] " + m.content;
         div.style.cursor = "pointer";
         div.addEventListener("click", () => loadSession(m.session_id));
+        const source = m._source || "semantic";
+        const badge = document.createElement("span");
+        badge.className = "result-source";
+        badge.textContent = source;
+        const textSpan = document.createElement("span");
+        textSpan.textContent = "[" + sessionLabel + "] " + m.content;
+        div.appendChild(badge);
+        div.appendChild(textSpan);
         messagesDiv.appendChild(div);
     })
 }

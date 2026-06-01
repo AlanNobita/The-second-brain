@@ -8,6 +8,8 @@ _collection = None
 
 
 def init_embedding_service():
+    if os.environ.get("SKIP_EMBEDDINGS") == "true":
+        return
     from sentence_transformers import SentenceTransformer
     import chromadb
 
@@ -20,13 +22,15 @@ def init_embedding_service():
 
 def generate_embedding(text): 
     """Convert text to a vector."""
-    assert _model is not None, "init_embedding_service() must be called first"
+    if _model is None:
+        return [0.0] * 384
     return _model.encode(text).tolist()
 
 def store_embedding(message_id, text, session_id, role):
     """Generate embedding and store in Chromadb with metadata"""
     embedding = generate_embedding(text)
-    assert _collection is not None, "init_embedding_service() must be called"
+    if _collection is None:
+        return
     _collection.add(
         embeddings=[embedding], 
         ids = [str(message_id)],

@@ -16,6 +16,7 @@ async function sendMessage() {
     addMessage("user", text);
     input.value = "";
     sendBtn.disabled = true;
+    showTypingIndicator();
     try {
         const response = await fetch("/chat/send", {
             method: "POST",
@@ -24,9 +25,11 @@ async function sendMessage() {
         });
         const data = await response.json();
         sessionId = data.session_id;
+        removeTypingIndicator();
         addMessage("assistant", data.reply);
         loadSessions();
     } catch (err) {
+        removeTypingIndicator();
         addMessage("assistant", "Error: could not reach the server.");
     } finally {
         sendBtn.disabled = false;
@@ -87,6 +90,19 @@ async function performSearch(query) {
         div.addEventListener("click", () => loadSession(m.session_id));
         messagesDiv.appendChild(div);
     })
+}
+
+function showTypingIndicator() {
+    const div = document.createElement("div");
+    div.className = "message assistant typing";
+    div.id = "typing-indicator";
+    div.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+    messagesDiv.appendChild(div);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+function removeTypingIndicator() {
+    const indicator = document.getElementById("typing-indicator");
+    if (indicator) indicator.remove();
 }
 
 searchInput.addEventListener("input", (e) =>{

@@ -3,6 +3,8 @@ from flask import current_app
 # from .memory_service import get_or_create_session
 from ..models.db import save_message, get_message
 from .embedding_service import store_embedding
+from .embedding_service import semantic_search
+from ..models.db import get_messages_by_ids
 
 def get_ai_response(session_id, user_message):
     # Save user message
@@ -20,7 +22,28 @@ def get_ai_response(session_id, user_message):
         } for m in history
     ]
 
-    # Call the AI 
+    rag_results = semantic_search(user_message, limit= 3)
+    rag_ids = [int(id_) for id_ in rag_results["ids"][0]]
+    rag_messages = get_messages_by_ids(rag_ids)
+    rag_messages = [m for m in rag_messages if m["session_id"] != session_id]
+
+    if rag_messages: 
+        rag_content = "\n\n".join(
+            f"[Previous conversation - {m["session_id"][:8]}...] {m["role"]}: {m["content"]}" for m in rag_messages[:3]
+        )   
+        
+        system_prompt = {
+            "role": "system", 
+            "content": (
+                "You are a Second Brain AI assistant. "
+                "Here are relevant past messages from the user's history: \n\n"
+                f"{rag_content}"
+                "Use them for context when answering the current question."
+            )
+        }
+        messages.insert(0, system_prompt)
+        
+        # Call the AI 
     client = OpenAI(
         api_key=current_app.config["OPENROUTER_API_KEY"],
         base_url=current_app.config["OPENROUTER_BASE_URL"],

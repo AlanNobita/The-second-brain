@@ -10,7 +10,10 @@ from .youtube_service import get_channel_videos, fetch_transcript
 from .note_service import debloat_and_structure, save_note_file
 from ..models.db import save_message
 from uuid import uuid4
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def subscribe(channel_url):
@@ -36,7 +39,8 @@ def check_subscription(sub_id):
         return 0
     try:
         videos = get_channel_videos(sub["channel_url"], max_results=5)
-    except Exception:
+    except Exception as e:
+        logger.warning("check_subscription(%s) — get_channel_videos failed: %s", sub_id, e)
         return 0
     new_count = 0
     for video in videos:
@@ -66,7 +70,7 @@ def has_due_subscriptions():
     subs = db_get_subs(only_active=True)
     if not subs:
         return False
-    one_hour_ago = (datetime.utcnow() - timedelta(hours=1)).isoformat()
+    one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
     for sub in subs:
         if sub["last_checked"] is None or sub["last_checked"] < one_hour_ago:
             return True
@@ -75,11 +79,14 @@ def has_due_subscriptions():
 
 def check_due_subscriptions():
     subs = db_get_subs(only_active=True)
+    one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
     for sub in subs:
+        if sub["last_checked"] is not None and sub["last_checked"] >= one_hour_ago:
+            continue
         try:
             check_subscription(sub["id"])
-        except Exception:
-            continue
+        except Exception as e:
+            logger.warning("check_due_subscriptions — sub %s failed: %s", sub["id"], e)
 
 
 def _ingest_single_video(video, channel_name):
@@ -103,7 +110,7 @@ def _ingest_single_video(video, channel_name):
             prefix = f"[YouTube] {video['title']} ({i+1}/{len(chunks)})"
             msg_id = save_message(session_id, "assistant", f"{prefix}\n\n{chunk}")
             store_embedding(msg_id, f"{prefix}\n\n{chunk}", session_id, "assistant")
-        ingested_date = datetime.utcnow().strftime("%Y-%m-%d")
+        ingested_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         file_path = save_note_file(markdown, video["title"], ingested_date)
         add_ingested_video(
             video_id=video["video_id"],
@@ -113,5 +120,5 @@ def _ingest_single_video(video, channel_name):
             session_id=session_id,
             file_path=file_path,
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("_ingest_single_video failed for %s: %s", video.get("video_id", "?"), e)

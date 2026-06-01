@@ -1,7 +1,9 @@
 import os
-import re as _re
+import re
 from openai import OpenAI
+from openai import APIError, APITimeoutError
 from flask import current_app
+import requests
 
 
 def debloat_and_structure(transcript, video_title, channel):
@@ -35,15 +37,18 @@ Format:
             api_key=current_app.config["OPENROUTER_API_KEY"],
             base_url=current_app.config["OPENROUTER_BASE_URL"],
         )
+        model = current_app.config.get("OPENROUTER_MODEL", "nvidia/nemotron-3-super-120b-a12b:free")
         response = client.chat.completions.create(
-            model="nvidia/nemotron-3-super-120b-a12b:free",
+            model=model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"Title: {video_title}\nChannel: {channel}\n\nTranscript:\n{transcript}"}
             ]
         )
         return response.choices[0].message.content
-    except Exception:
+    except (APIError, APITimeoutError, requests.RequestException, KeyError, RuntimeError) as e:
+        import logging
+        logging.getLogger(__name__).warning("OpenRouter de-bloat failed: %s", e)
         return _fallback_debloat(transcript, video_title, channel)
 
 
@@ -69,9 +74,12 @@ def save_note_file(markdown, video_title, ingested_date, output_dir=None):
         output_dir = os.environ.get("OBSIDIAN_NOTES_PATH",
                                     os.path.join(os.path.dirname(__file__), "..", "..", "obsidian-ingest"))
     os.makedirs(output_dir, exist_ok=True)
-    safe_title = _re.sub(r'[^\w\s-]', '', video_title).strip().replace(' ', '-')[:80]
+    safe_title = re.sub(r'[^\w\s-]', '', video_title).strip().replace(' ', '-')[:80]
     filename = f"{ingested_date}-{safe_title}.md"
     filepath = os.path.join(output_dir, filename)
-    with open(filepath, "w") as f:
-        f.write(markdown)
+    try:
+        with open(filepath, "w") as f:
+            f.write(markdown)
+    except OSError as e:
+        raise IOError(f"Failed to write note file at {filepath}: {e}") from e
     return filepath

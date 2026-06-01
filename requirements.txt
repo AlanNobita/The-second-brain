@@ -5,3 +5,5 @@ APScheduler==3.11.2
 youtube-transcript-api
 yt-dlp
 requests
+chromadb
+sentence-transformers

@@ -28,7 +28,7 @@ function addMessage(role, content, isHtml = false) {
   const maxWidth = role === 'user' ? 'max-w-[75%]' : 'max-w-[85%] md:max-w-[75%]';
 
   const bubble = document.createElement('div');
-  bubble.className = `${maxWidth} px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+  bubble.className = `${maxWidth} px-4 py-3 rounded-2xl text-sm leading-relaxed message-content ${
     isUser
       ? 'rounded-br-md'
       : 'rounded-bl-md'

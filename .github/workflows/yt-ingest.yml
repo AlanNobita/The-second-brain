@@ -32,11 +32,10 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Download previous DB
-        uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          name: second-brain-db
-          path: ./
+        run: |
+          gh run download --name second-brain-db --dir ./ 2>/dev/null || echo "No previous artifact"
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Run ingestion
         run: python scripts/yt_cron.py

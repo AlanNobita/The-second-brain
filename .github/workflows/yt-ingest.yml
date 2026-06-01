@@ -33,7 +33,16 @@ jobs:
 
       - name: Download previous DB
         run: |
-          gh run download --name second-brain-db --dir ./ 2>/dev/null || echo "No previous artifact"
+          ARTIFACT_ID=$(gh api /repos/${{ github.repository }}/actions/artifacts \
+            --jq '.artifacts | map(select(.name=="second-brain-db" and .expired==false)) | .[0] | .id' 2>/dev/null)
+          if [ -n "$ARTIFACT_ID" ] && [ "$ARTIFACT_ID" != "null" ]; then
+            echo "Downloading artifact $ARTIFACT_ID"
+            gh api /repos/${{ github.repository }}/actions/artifacts/$ARTIFACT_ID/zip > second_brain.db.zip
+            unzip -o second_brain.db.zip
+            rm -f second_brain.db.zip
+          else
+            echo "No previous artifact found"
+          fi
         env:
           GH_TOKEN: ${{ github.token }}
 

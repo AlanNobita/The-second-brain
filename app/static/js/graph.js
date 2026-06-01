@@ -4,6 +4,7 @@ var edges = new vis.DataSet([]);
 var allData = { nodes: [], edges: [] };
 var themes = ['tokyo-night', 'light', 'github-dark', 'obsidian'];
 var themeIndex = 0;
+var searchTimer;
 
 var container = document.getElementById('graph-container');
 var searchInput = document.getElementById('search-input');
@@ -64,19 +65,32 @@ async function loadGraph() {
 
   network.on('doubleClick', function(params) {
     if (params.nodes.length > 0) {
-      network.focus(params.nodes[0], { scale: 1.5, animation: { duration: 400, easingFunction: 'easeInOutQuad' } });
+      var nodeId = params.nodes[0];
+      var connected = allData.edges.filter(function(e) { return e.from === nodeId || e.to === nodeId; });
+      var connectedIds = new Set();
+      connectedIds.add(nodeId);
+      connected.forEach(function(e) { connectedIds.add(e.from === nodeId ? e.to : e.from); });
+      var visibleNodes = allData.nodes.filter(function(n) { return connectedIds.has(n.id); });
+      nodes.clear();
+      edges.clear();
+      nodes.add(visibleNodes);
+      edges.add(connected);
+      network.fit({ animation: { duration: 400, easingFunction: 'easeInOutQuad' } });
     }
   });
 
   searchInput.addEventListener('input', function() {
-    var q = this.value.trim();
-    if (!q) return;
-    var matching = allData.nodes.filter(function(n) { return n.label.toLowerCase().indexOf(q.toLowerCase()) !== -1; });
-    if (matching.length > 0) {
-      network.focus(matching[0].id, { scale: 1.5, animation: { duration: 400, easingFunction: 'easeInOutQuad' } });
-      network.selectNodes([matching[0].id]);
-      showNodeDetails(matching[0].id);
-    }
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(function() {
+      var q = searchInput.value.trim();
+      if (!q) return;
+      var matching = allData.nodes.filter(function(n) { return n.label.toLowerCase().indexOf(q.toLowerCase()) !== -1; });
+      if (matching.length > 0) {
+        network.focus(matching[0].id, { scale: 1.5, animation: { duration: 400, easingFunction: 'easeInOutQuad' } });
+        network.selectNodes([matching[0].id]);
+        showNodeDetails(matching[0].id);
+      }
+    }, 300);
   });
 }
 
@@ -84,8 +98,19 @@ function showNodeDetails(nodeId) {
   var node = allData.nodes.find(function(n) { return n.id === nodeId; });
   if (!node) return;
   var rels = allData.edges.filter(function(e) { return e.from === nodeId || e.to === nodeId; });
-  var colors = ['#5a7fd4', '#8b5cf6', '#6bae44', '#d4872e', '#d4506a', '#4db8e8', '#c8943a'];
-  var color = colors[nodeId % colors.length];
+  var typeColors = {
+    'python': '#5a7fd4',
+    'framework': '#8b5cf6',
+    'database': '#6bae44',
+    'concept': '#d4872e',
+    'tool': '#d4506a',
+    'library': '#4db8e8',
+    'language': '#c8943a',
+    'algorithm': '#7aa2f7',
+    'system': '#9ece6a',
+    'protocol': '#bb9af7',
+  };
+  var color = typeColors[(node.title || 'concept').toLowerCase()] || '#565870';
 
   var relHtml = '';
   rels.forEach(function(r) {
@@ -134,6 +159,10 @@ document.getElementById('zoom-out').addEventListener('click', function() {
 });
 
 document.getElementById('zoom-reset').addEventListener('click', function() {
+  nodes.clear();
+  edges.clear();
+  nodes.add(allData.nodes);
+  edges.add(allData.edges);
   network.fit({ animation: { duration: 300, easingFunction: 'easeInOutQuad' } });
 });
 

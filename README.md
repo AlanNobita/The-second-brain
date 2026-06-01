@@ -9,7 +9,7 @@ Spend less time tracking knowledge — more time using it, thinking, and creatin
 Requires `uv` (install via `pip install uv`).
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
+uv venv .venv && source .venv/bin/activate
 uv pip install -r requirements.txt
 cp .example.env .env   # add your OPENROUTER_API_KEY
 python run.py
@@ -28,16 +28,16 @@ Open `http://localhost:5000`
 | YouTube ingestion (transcript, search) | ✅ |
 | YouTube channel subscriptions | ✅ |
 | Obsidian note export | ✅ |
-| Knowledge Graph (entities + relationships) | 🔄 Phase 5 |
-| Hybrid search (FTS5 + vector) | 🔄 Phase 4+ |
+| Knowledge Graph (entities + relationships) | ✅ |
+| Hybrid search (FTS5 + vector) | ✅ |
 
 ## Documentation
 
-Full documentation is in [`docs/`](docs/README.md):
+## Documentation
 
-| File | Contents |
+| Guide | What it covers |
 |---|---|
-| [docs/README.md](docs/README.md) | Overview, features, tech stack |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, data flow, Mermaid diagrams |
-| [docs/API.md](docs/API.md) | Complete HTTP endpoint reference |
-| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Setup, testing, conventions, deployment |
+| [User Guide](docs/USER_GUIDE.md) | How to use everything — chat, commands, graph, YouTube |
+| [API Reference](docs/API.md) | All HTTP endpoint documentation |
+| [Architecture](docs/ARCHITECTURE.md) | System design, data flow, diagrams |
+| [Development](docs/DEVELOPMENT.md) | Setup, testing, conventions |

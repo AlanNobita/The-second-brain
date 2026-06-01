@@ -44,7 +44,7 @@ def get_ai_response(session_id, user_message):
 
     if rag_messages: 
         rag_content = "\n\n".join(
-            f"[Previous conversation - {m["session_id"][:8]}...] {m["role"]}: {m["content"]}" for m in rag_messages[:3]
+            f'[Previous conversation - {m["session_id"][:8]}...] {m["role"]}: {m["content"]}' for m in rag_messages[:3]
         )   
         
         system_prompt = {

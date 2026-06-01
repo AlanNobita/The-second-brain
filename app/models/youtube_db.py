@@ -39,6 +39,10 @@ def add_subscription(channel_url, channel_name):
         "INSERT OR IGNORE INTO subscriptions (channel_url, channel_name) VALUES (?, ?)",
         (channel_url, channel_name)
     )
+    conn.execute(
+        "UPDATE subscriptions SET active = 1, fail_count = 0 WHERE channel_url = ?",
+        (channel_url,)
+    )
     conn.commit()
     row = conn.execute(
         "SELECT * FROM subscriptions WHERE channel_url = ?", (channel_url,)
@@ -69,10 +73,11 @@ def get_subscriptions(only_active=True):
 
 def remove_subscription(sub_id):
     conn = _get_conn()
-    conn.execute("UPDATE subscriptions SET active = 0 WHERE id = ?", (sub_id,))
+    cursor = conn.execute("UPDATE subscriptions SET active = 0 WHERE id = ?", (sub_id,))
     conn.commit()
+    affected = cursor.rowcount
     conn.close()
-    return True
+    return affected > 0
 
 def update_last_checked(sub_id):
     conn = _get_conn()
@@ -84,12 +89,7 @@ def update_last_checked(sub_id):
     conn.close()
 
 def mark_subscription_inactive(sub_id):
-    conn = _get_conn()
-    conn.execute(
-        "UPDATE subscriptions SET active = 0 WHERE id = ?", (sub_id,)
-    )
-    conn.commit()
-    conn.close()
+    remove_subscription(sub_id)
 
 def add_ingested_video(video_id, channel_name, video_title, video_url, session_id, file_path=None):
     conn = _get_conn()

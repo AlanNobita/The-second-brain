@@ -40,9 +40,9 @@ def delete_relationship(rel_id):
 
 def extract_triples(triples):
     for source_name, rel_type, target_name in triples:
-        s = add_entity(source_name.strip())
-        t = add_entity(target_name.strip())
-        add_relationship(s, t, rel_type.strip())
+        s = create_entity(source_name.strip())
+        t = create_entity(target_name.strip())
+        create_relationship(s["id"], t["id"], rel_type.strip())
     return {"relationships_created": len(triples)}
 
 

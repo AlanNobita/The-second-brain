@@ -64,3 +64,30 @@ def test_get_graph_data():
     data = get_graph_data()
     assert len(data["nodes"]) == 2
     assert len(data["edges"]) == 1
+
+
+def test_get_entity_by_id():
+    from app.services.kg_service import create_entity, get_entity_by_id
+    e = create_entity("Python", "language")
+    found = get_entity_by_id(e["id"])
+    assert found["name"] == "Python"
+    assert get_entity_by_id(99999) is None
+
+
+def test_delete_relationship():
+    from app.services.kg_service import create_entity, create_relationship, list_relationships, delete_relationship
+    py = create_entity("Python", "language")
+    fl = create_entity("Flask", "framework")
+    r = create_relationship(py["id"], fl["id"], "built with")
+    assert len(list_relationships()) == 1
+    delete_relationship(r["id"])
+    assert len(list_relationships()) == 0
+
+
+def test_search_entities():
+    from app.services.kg_service import create_entity, search_entities
+    create_entity("Python", "language")
+    create_entity("PostgreSQL", "database")
+    results = search_entities("Post")
+    assert len(results) == 1
+    assert results[0]["name"] == "PostgreSQL"

@@ -112,6 +112,72 @@ async function handleYTCommand(command, args) {
             return false;
     }
 }
+async function handleKGCommand(command, args) {
+    if (command !== "kg") return false;
+    var sub = args.split(" ")[0];
+    var rest = args.slice(sub.length).trim();
+    switch (sub) {
+        case "extract": {
+            var resp = await fetch("/kg/extract", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({triples: [[rest, "related to", "topic"]]})
+            });
+            var data = await resp.json();
+            addMessage("assistant", "\u2705 Extracted " + data.relationships_created + " relationships.");
+            return true;
+        }
+        case "add": {
+            var parts = rest.split(",").map(function(s) { return s.trim(); });
+            var resp = await fetch("/kg/entity", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({name: parts[0], type: parts[1] || "concept", description: parts[2] || ""})
+            });
+            var data = await resp.json();
+            addMessage("assistant", "\u2705 Created entity: " + data.name + " (ID: " + data.id + ")");
+            return true;
+        }
+        case "relate": {
+            var parts = rest.split("|").map(function(s) { return s.trim(); });
+            if (parts.length < 2) {
+                addMessage("assistant", "\u274C Usage: /kg relate source | target | relation");
+                return true;
+            }
+            var resp = await fetch("/kg/relation", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    source_name: parts[0],
+                    target_name: parts[1],
+                    relationship_type: parts[2] || "related to"
+                })
+            });
+            var data = await resp.json();
+            addMessage("assistant", "\u2705 Related " + parts[0] + " \u2192 " + parts[1] + " (" + data.relationship_type + ")");
+            return true;
+        }
+        case "list": {
+            var resp = await fetch("/kg/entities");
+            var entities = await resp.json();
+            if (entities.length === 0) {
+                addMessage("assistant", "No entities in the knowledge graph.");
+                return true;
+            }
+            var msg = "\u2501\u2501\u2501 Knowledge Graph Entities \u2501\u2501\u2501\n";
+            entities.forEach(function(e) {
+                msg += "\u2022 " + e.name + " (" + e.type + ")";
+                if (e.description) msg += " \u2014 " + e.description;
+                msg += "\n";
+            });
+            addMessage("assistant", msg);
+            return true;
+        }
+        default:
+            addMessage("assistant", "KG commands: extract <text>, add <name>[,type,desc], relate src | tgt | rel, list");
+            return true;
+    }
+}
 
 async function sendMessage() {
     const text = input.value.trim();
@@ -122,8 +188,13 @@ async function sendMessage() {
         const spaceIdx = text.indexOf(" ");
         const command = spaceIdx === -1 ? text.slice(1) : text.slice(1, spaceIdx);
         const args = spaceIdx === -1 ? "" : text.slice(spaceIdx + 1);
-        const handled = await handleYTCommand(command, args);
-        if (handled) {
+        var ytHandled = await handleYTCommand(command, args);
+        if (ytHandled) {
+            input.value = "";
+            return;
+        }
+        var kgHandled = await handleKGCommand(command, args);
+        if (kgHandled) {
             input.value = "";
             return;
         }

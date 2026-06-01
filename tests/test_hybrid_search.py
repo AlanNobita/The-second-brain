@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import patch
 from app.models.db import get_connection, init_db, init_fts, search_messages_fts, save_message
 
 
@@ -68,3 +69,71 @@ def test_fts_sync_preserves_existing():
     conn.close()
     assert row is not None
     assert row["rowid"] == mid
+
+
+def test_hybrid_search_returns_list():
+    with patch("app.services.hybrid_search.semantic_search") as mock_vec:
+        mock_vec.return_value = {"ids": [[]], "distances": [[]], "metadatas": [[]]}
+        from app.services.hybrid_search import search
+        result = search("python")
+        assert isinstance(result, list)
+
+
+def test_hybrid_search_empty_query():
+    from app.services.hybrid_search import search
+    result = search("")
+    assert result == []
+
+
+def test_hybrid_search_merges_results():
+    conn = get_connection()
+    conn.execute("INSERT INTO messages (session_id, role, content) VALUES ('s1', 'user', 'python programming')")
+    conn.execute("INSERT INTO messages (session_id, role, content) VALUES ('s2', 'user', 'rust is fast')")
+    conn.commit()
+    id1 = conn.execute("SELECT id FROM messages WHERE session_id='s1'").fetchone()["id"]
+    id2 = conn.execute("SELECT id FROM messages WHERE session_id='s2'").fetchone()["id"]
+    conn.close()
+    init_fts()
+    with patch("app.services.hybrid_search.semantic_search") as mock_vec:
+        mock_vec.return_value = {
+            "ids": [[str(id1), str(id2)]],
+            "distances": [[0.1, 0.3]],
+            "metadatas": [[{"session_id": "s1", "role": "user"}, {"session_id": "s2", "role": "user"}]]
+        }
+        from app.services.hybrid_search import search
+        results = search("programming", limit=10)
+        assert len(results) > 0
+        assert all("_source" in r for r in results)
+        assert all("_score" in r for r in results)
+
+
+def test_hybrid_search_keyword_mode():
+    conn = get_connection()
+    conn.execute("INSERT INTO messages (session_id, role, content) VALUES ('s3', 'user', 'hello keyword test')")
+    conn.commit()
+    conn.close()
+    init_fts()
+    from app.services.hybrid_search import search
+    results = search("keyword", mode="keyword")
+    assert isinstance(results, list)
+    for r in results:
+        assert r["_source"] == "keyword"
+
+
+def test_hybrid_search_semantic_mode():
+    conn = get_connection()
+    conn.execute("INSERT INTO messages (session_id, role, content) VALUES ('s1', 'user', 'some content')")
+    conn.commit()
+    mid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.close()
+    from app.services.hybrid_search import search
+    with patch("app.services.hybrid_search.semantic_search") as mock_vec:
+        mock_vec.return_value = {
+            "ids": [[str(mid)]],
+            "distances": [[0.2]],
+            "metadatas": [[{"session_id": "s1", "role": "user"}]]
+        }
+        results = search("anything", mode="semantic")
+        assert len(results) > 0
+        for r in results:
+            assert r["_source"] == "semantic"

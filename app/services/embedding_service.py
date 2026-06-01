@@ -1,29 +1,21 @@
-# import the dependencies 
+import os
 
-from sentence_transformers import SentenceTransformer
-import chromadb
-import os 
-
-
-# path hwere chromaDB stores its data 
 CHROMA_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "chroma_db")
 
-
-# load the model once, module level, so it's loaded when the service is first imported 
-_model = None 
-
-# ChromaDB client + collection 
+_model = None
 _client = None
 _collection = None
 
+
 def init_embedding_service():
-    """Call once at startup. Loads model and connects to ChromaDB"""
+    from sentence_transformers import SentenceTransformer
+    import chromadb
 
     global _model, _client, _collection
 
     _model = SentenceTransformer("all-MiniLM-L6-v2")
-    _client = chromadb.PersistentClient(path = CHROMA_PATH)
-    _collection = _client.get_or_create_collection(name = "messages")
+    _client = chromadb.PersistentClient(path=CHROMA_PATH)
+    _collection = _client.get_or_create_collection(name="messages")
 
 
 def generate_embedding(text): 

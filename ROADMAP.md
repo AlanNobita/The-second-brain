@@ -12,12 +12,9 @@
 - [x] Hybrid search (FTS5 + ChromaDB 50/50 blend)
 - [x] Knowledge Graph (entities, relationships, vis.js graph page, chat commands)
 - [x] uv dependency management
-
-## Next (Phase 6: Proactive Agents)
-
-- [ ] Daily reflection — summarize what was learned each day
-- [ ] Proactive suggestions — AI notices connections during chat ("you said X yesterday, related to Y")
-- [ ] Background periodic tasks (e.g., re-embed, cleanup)
+- [x] Daily reflection — summarize what was learned each day
+- [x] Proactive suggestions — AI notices connections during chat
+- [x] Background periodic tasks (daily reflection, weekly cleanup/VACUUM)
 
 ## Future Ideas
 

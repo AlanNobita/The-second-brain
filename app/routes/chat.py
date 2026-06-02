@@ -21,14 +21,16 @@ def send_message():
     user_message = data.get("message", "")
     session_id = data.get("session_id") or str(uuid4())
 
-    ai_reply = get_ai_response(session_id, user_message)
+    ai_reply, suggestion = get_ai_response(session_id, user_message)
 
-    return jsonify(
-        {
-            "session_id": session_id,  
-            "reply": ai_reply
-        }
-    )
+    resp = {
+        "session_id": session_id,
+        "reply": ai_reply,
+    }
+    if suggestion:
+        resp["suggestion"] = suggestion
+
+    return jsonify(resp)
 
 @chat_bp.route("/sessions", methods=["GET"])
 def show_sessions():

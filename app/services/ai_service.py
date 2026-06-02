@@ -5,6 +5,7 @@ from ..models.db import save_message, get_message
 from .embedding_service import store_embedding
 from .embedding_service import semantic_search
 from ..models.db import get_messages_by_ids
+from .proactive_service import get_proactive_suggestions, _generate_suggestion_narrative
 from threading import Thread
 import logging
 
@@ -73,4 +74,20 @@ def get_ai_response(session_id, user_message):
     # save_message(session_id, "assistant", ai_content)
     msg_id= save_message(session_id=session_id, role="assistant", content=ai_content)
     store_embedding(message_id=msg_id, text=ai_content, session_id=session_id, role="assistant")
-    return ai_content
+
+    # Proactive suggestion check (background, don't block)
+    suggestion = None
+    try:
+        suggestions = get_proactive_suggestions(user_message, session_id, limit=2)
+        if suggestions:
+            narrative = _generate_suggestion_narrative(user_message, suggestions)
+            if narrative:
+                suggestion = {
+                    "text": narrative,
+                    "session_id": suggestions[0]["session_id"],
+                    "preview": suggestions[0]["preview"],
+                }
+    except Exception as e:
+        logger.debug("Proactive suggestion error: %s", e)
+
+    return ai_content, suggestion

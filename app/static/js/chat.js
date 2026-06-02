@@ -235,6 +235,75 @@ async function handleYTCommand(command, args) {
   }
 }
 
+function showSuggestion(suggestion) {
+  const container = document.createElement('div');
+  container.className = 'flex justify-start animate-fade-in-up';
+  container.style.marginTop = '-8px';
+  const bubble = document.createElement('div');
+  bubble.className = 'px-3 py-2 rounded-xl text-xs max-w-[85%] md:max-w-[75%] flex items-start gap-2';
+  Object.assign(bubble.style, {
+    background: 'var(--accent-soft)',
+    border: '1px solid var(--border)',
+    color: 'var(--text-secondary)',
+  });
+  bubble.innerHTML = `
+    <svg width="12" height="12" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.2" style="flex-shrink:0;margin-top:2px;color:var(--accent);">
+      <path d="M7.5 2v7M7.5 11v2"/>
+    </svg>
+    <span>${escapeHtml(suggestion.text)}</span>
+  `;
+  container.appendChild(bubble);
+  messagesEl.appendChild(container);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+async function handleReflectionCommand(command, args) {
+  if (command !== 'reflections' && command !== 'reflection-today') return false;
+
+  if (command === 'reflections') {
+    const refs = await api('/api/reflections');
+    if (!refs || refs.length === 0) {
+      addMessage('assistant', '<div style="color:var(--text-secondary);">No daily reflections yet. They are generated automatically each day.</div>', true);
+      return true;
+    }
+    let html = '<div class="font-semibold text-sm mb-3" style="color:var(--cyan);">Daily Reflections</div>';
+    refs.forEach((r) => {
+      const topics = r.topics || [];
+      const topicTags = topics.map(t => `<span class="text-xs px-2 py-0.5 rounded-full" style="background:var(--accent-soft);color:var(--accent);">${escapeHtml(t)}</span>`).join(' ');
+      html += `<div class="p-3 rounded-xl mb-3" style="background:var(--elevated);border:1px solid var(--border);">
+        <div class="text-xs font-semibold mb-1" style="color:var(--text-secondary);">${escapeHtml(r.date)}</div>
+        <div class="mb-2 text-sm leading-relaxed">${marked.parse(r.summary)}</div>
+        ${topicTags ? `<div class="flex flex-wrap gap-1.5 mt-2">${topicTags}</div>` : ''}
+      </div>`;
+    });
+    addMessage('assistant', html, true);
+    return true;
+  }
+
+  if (command === 'reflection-today') {
+    let ref = await api('/api/reflection/today');
+    if (!ref) {
+      addMessage('assistant', '<div style="color:var(--text-secondary);">No reflection for today yet. Generating now...</div>', true);
+      ref = await api('/api/reflection/generate', { method: 'POST' });
+    }
+    if (!ref || ref.error) {
+      addMessage('assistant', `<div style="color:var(--warning);">${escapeHtml(ref?.error || 'No messages today to reflect on.')}</div>`, true);
+      return true;
+    }
+    const topics = ref.topics || [];
+    const topicTags = topics.map(t => `<span class="text-xs px-2 py-0.5 rounded-full" style="background:var(--accent-soft);color:var(--accent);">${escapeHtml(t)}</span>`).join(' ');
+    let html = `<div class="font-semibold text-sm mb-2" style="color:var(--cyan);">Today's Reflection</div>
+      <div class="text-sm leading-relaxed mb-2">${marked.parse(ref.summary)}</div>`;
+    if (topicTags) {
+      html += `<div class="flex flex-wrap gap-1.5">${topicTags}</div>`;
+    }
+    addMessage('assistant', html, true);
+    return true;
+  }
+
+  return false;
+}
+
 async function handleKGCommand(command, args) {
   if (command !== 'kg') return false;
   const sub = args.split(' ')[0];
@@ -311,6 +380,7 @@ async function sendMessage() {
 
     try {
       if (await handleYTCommand(command, args)) return;
+      if (await handleReflectionCommand(command, args)) return;
       if (await handleKGCommand(command, args)) return;
     } catch (err) {
       addMessage('assistant', `<div style="color:var(--error);">❌ ${escapeHtml(err.message)}</div>`, true);
@@ -339,6 +409,9 @@ async function sendMessage() {
     sessionId = data.session_id;
     removeTypingIndicator();
     addMessage('assistant', data.reply);
+    if (data.suggestion) {
+      showSuggestion(data.suggestion);
+    }
     loadSessions();
   } catch (err) {
     removeTypingIndicator();

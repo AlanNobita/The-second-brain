@@ -48,3 +48,12 @@ def semantic_search(query, limit = 10):
     )
     return results
 
+
+def delete_session_embeddings(session_id):
+    """Delete all embeddings associated with a session_id from ChromaDB."""
+    global _collection
+    if _collection is None:
+        return
+    _collection.delete(where={"session_id": session_id})
+
+

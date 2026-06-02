@@ -21,7 +21,7 @@ def send_message():
     user_message = data.get("message", "")
     session_id = data.get("session_id") or str(uuid4())
 
-    ai_reply, suggestion = get_ai_response(session_id, user_message)
+    ai_reply, suggestion, sources = get_ai_response(session_id, user_message)
 
     resp = {
         "session_id": session_id,
@@ -29,6 +29,8 @@ def send_message():
     }
     if suggestion:
         resp["suggestion"] = suggestion
+    if sources:
+        resp["sources"] = sources
 
     return jsonify(resp)
 
@@ -78,3 +80,23 @@ def find_message_with_keywords():
 
     from ..services.hybrid_search import search as hybrid_search
     return jsonify(hybrid_search(query, mode=mode))
+
+
+@chat_bp.route("/session/<session_id>", methods=["DELETE"])
+def delete_session_route(session_id):
+    if not session_id:
+        return jsonify({"error": "session_id is required"}), 400
+
+    # Delete from SQLite database
+    from ..models.db import delete_session
+    delete_session(session_id)
+
+    # Delete from ChromaDB
+    from ..services.embedding_service import delete_session_embeddings
+    try:
+        delete_session_embeddings(session_id)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("Failed to delete embeddings for session %s: %s", session_id, e)
+
+    return jsonify({"status": "ok"})

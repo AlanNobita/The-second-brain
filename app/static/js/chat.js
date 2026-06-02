@@ -1,4 +1,4 @@
-import { escapeHtml, api, debounce, formatDate, truncate, showToast } from './utils.js';
+import { escapeHtml, api, debounce, showToast } from './utils.js';
 
 let sessionId = null;
 let isSending = false;
@@ -14,153 +14,116 @@ const searchInput = document.getElementById('search-input');
 const sidebarToggle = document.getElementById('sidebar-toggle');
 const sidebarClose = document.getElementById('sidebar-close-btn');
 const sidebar = document.getElementById('sidebar');
+const sidebarOverlay = document.getElementById('sidebar-overlay');
 const themeToggle = document.getElementById('theme-toggle');
 const themeIconDark = document.getElementById('theme-icon-dark');
 const themeIconLight = document.getElementById('theme-icon-light');
 const newChatBtn = document.getElementById('new-chat-btn');
+const activeSessionTitle = document.getElementById('active-session-title');
 
-function addMessage(role, content, isHtml = false) {
+function addMessage(role, content, isHtml = false, sources = null) {
   emptyState?.remove();
-  const div = document.createElement('div');
-  div.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in-up`;
 
-  const isUser = role === 'user';
-  const maxWidth = role === 'user' ? 'max-w-[75%]' : 'max-w-[85%] md:max-w-[75%]';
+  const row = document.createElement('div');
+  row.className = `msg-row ${role}`;
 
   const bubble = document.createElement('div');
-  bubble.className = `${maxWidth} px-4 py-3 rounded-2xl text-sm leading-relaxed message-content ${
-    isUser
-      ? 'rounded-br-md'
-      : 'rounded-bl-md'
-  }`;
-
-  Object.assign(bubble.style, {
-    background: isUser ? 'var(--user-bubble)' : 'var(--assistant-bubble)',
-    color: isUser ? 'white' : 'var(--text)',
-    border: isUser ? 'none' : '1px solid var(--border)',
-  });
+  bubble.className = 'msg-bubble message-content';
 
   if (isHtml) {
     bubble.innerHTML = content;
+  } else if (role === 'assistant') {
+    bubble.innerHTML = marked.parse(content);
   } else {
     bubble.textContent = content;
   }
 
-  if (role === 'assistant' && !isHtml) {
-    const rendered = marked.parse(content);
-    bubble.innerHTML = rendered;
-    applyCodeBlocks(bubble);
+  row.appendChild(bubble);
+
+  if (role === 'assistant' && sources && sources.length > 0) {
+    const sourcesEl = document.createElement('div');
+    sourcesEl.className = 'msg-sources';
+    const label = document.createElement('span');
+    label.className = 'msg-sources-label';
+    label.textContent = 'Sources:';
+    sourcesEl.appendChild(label);
+    sources.forEach((s) => {
+      const pill = document.createElement(s.url ? 'a' : 'span');
+      pill.className = `source-pill source-${s.type}`;
+      pill.textContent = s.title || s.type;
+      if (s.url) {
+        pill.href = s.url;
+        pill.target = '_blank';
+        pill.rel = 'noopener noreferrer';
+      }
+      pill.title = s.url || s.session_id;
+      sourcesEl.appendChild(pill);
+    });
+    row.appendChild(sourcesEl);
   }
 
-  div.appendChild(bubble);
-  messagesEl.appendChild(div);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
-  return div;
-}
-
-function applyCodeBlocks(container) {
-  container.querySelectorAll('pre code').forEach((block) => {
-    const pre = block.parentElement;
-    pre.style.position = 'relative';
-    pre.style.background = 'var(--elevated)';
-    pre.style.border = '1px solid var(--border)';
-    pre.style.borderRadius = 'var(--radius-md)';
-    pre.style.padding = '16px';
-    pre.style.overflow = 'auto';
-    pre.style.fontSize = '12px';
-    pre.style.lineHeight = '1.6';
-    pre.style.margin = '8px 0';
-
-    const copyBtn = document.createElement('button');
-    copyBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="4" y="4" width="10" height="10" rx="1"/><path d="M1 11V3a2 2 0 012-2h8"/></svg>';
-    copyBtn.title = 'Copy code';
-    Object.assign(copyBtn.style, {
-      position: 'absolute', top: '8px', right: '8px',
-      width: '28px', height: '28px', display: 'flex',
-      alignItems: 'center', justifyContent: 'center',
-      border: '1px solid var(--border)', borderRadius: '6px',
-      background: 'var(--surface)', cursor: 'pointer',
-      color: 'var(--text-secondary)', transition: 'all 0.15s',
-    });
-    copyBtn.onclick = () => {
-      navigator.clipboard.writeText(block.textContent);
-      copyBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="#22C55E" stroke-width="1.5"><path d="M3 8l3 3 6-6"/></svg>';
-      setTimeout(() => {
-        copyBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="4" y="4" width="10" height="10" rx="1"/><path d="M1 11V3a2 2 0 012-2h8"/></svg>';
-      }, 2000);
-    };
-    pre.appendChild(copyBtn);
-  });
-
-  container.querySelectorAll('table').forEach((table) => {
-    table.style.width = '100%';
-    table.style.borderCollapse = 'collapse';
-    table.style.fontSize = '13px';
-    table.style.margin = '8px 0';
-    table.querySelectorAll('th, td').forEach((cell) => {
-      cell.style.border = '1px solid var(--border)';
-      cell.style.padding = '8px 12px';
-      cell.style.textAlign = 'left';
-    });
-    table.querySelectorAll('th').forEach((th) => {
-      th.style.background = 'var(--elevated)';
-      th.style.fontWeight = '600';
-    });
-  });
-
-  container.querySelectorAll('blockquote').forEach((q) => {
-    q.style.borderLeft = '3px solid var(--accent)';
-    q.style.paddingLeft = '12px';
-    q.style.margin = '8px 0';
-    q.style.opacity = '0.8';
-  });
+  messagesEl.appendChild(row);
+  scrollToBottom();
+  return row;
 }
 
 function showTypingIndicator() {
-  const div = document.createElement('div');
-  div.className = 'flex justify-start animate-fade-in';
-  div.id = 'typing-indicator';
+  removeTypingIndicator();
+  const row = document.createElement('div');
+  row.className = 'typing-row';
+  row.id = 'typing-indicator';
   const bubble = document.createElement('div');
-  bubble.className = 'px-4 py-4 rounded-2xl rounded-bl-md flex gap-1.5 items-center';
-  Object.assign(bubble.style, {
-    background: 'var(--assistant-bubble)',
-    border: '1px solid var(--border)',
-  });
+  bubble.className = 'typing-bubble';
   for (let i = 0; i < 3; i++) {
     const dot = document.createElement('span');
-    dot.style.cssText = `width:7px;height:7px;border-radius:50%;background:var(--text-tertiary);display:inline-block;animation:pulse-dot 1.4s infinite ease-in-out both;animation-delay:${-0.32 + i * 0.16}s`;
+    dot.className = 'typing-dot';
     bubble.appendChild(dot);
   }
-  div.appendChild(bubble);
-  messagesEl.appendChild(div);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
+  row.appendChild(bubble);
+  messagesEl.appendChild(row);
+  scrollToBottom();
 }
 
 function removeTypingIndicator() {
   document.getElementById('typing-indicator')?.remove();
 }
 
-function markdownToHtml(text) {
-  return marked.parse(text);
+function scrollToBottom() {
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function showSuggestion(suggestion) {
+  const row = document.createElement('div');
+  row.className = 'suggestion-row';
+  const bubble = document.createElement('div');
+  bubble.className = 'suggestion-bubble';
+  bubble.innerHTML = `
+    <svg width="12" height="12" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <circle cx="7.5" cy="7.5" r="3"/>
+      <path d="M7.5 1v1M7.5 13v1M1 7.5h1M13 7.5h1"/>
+    </svg>
+    <span>${escapeHtml(suggestion.text)}</span>
+  `;
+  row.appendChild(bubble);
+  messagesEl.appendChild(row);
+  scrollToBottom();
 }
 
 async function handleYTCommand(command, args) {
   switch (command) {
     case 'ytsearch': {
       const results = await api(`/yt/search?q=${encodeURIComponent(args)}`);
-      let html = '<div class="space-y-2">';
-      html += '<div class="font-semibold text-sm mb-3" style="color:var(--cyan);">YouTube Search Results</div>';
-      results.forEach((v, i) => {
-        html += `<div class="p-3 rounded-xl" style="background:var(--elevated);border:1px solid var(--border);">
-          <div class="font-semibold text-sm mb-1">${escapeHtml(v.title)}</div>
-          <div class="text-xs mb-2" style="color:var(--text-secondary);">${escapeHtml(v.channel)} &middot; ${v.published_at || ''}</div>
-          <div class="flex gap-2">
-            <button class="yt-ingest-btn text-xs font-medium px-3 py-1.5 rounded-lg transition-all duration-150 hover:opacity-90 active:scale-95" style="background:var(--accent);color:white;" data-url="${escapeHtml(v.url)}">Ingest</button>
-            <a href="${escapeHtml(v.url)}" target="_blank" class="text-xs font-medium px-3 py-1.5 rounded-lg transition-all duration-150" style="background:var(--elevated);border:1px solid var(--border);color:var(--text-secondary);">Watch</a>
+      let html = '<div class="cmd-results-title">YouTube Search Results</div>';
+      results.forEach((v) => {
+        html += `<div class="yt-result">
+          <div class="yt-result-title">${escapeHtml(v.title)}</div>
+          <div class="yt-result-meta">${escapeHtml(v.channel)} &middot; ${v.published_at || ''}</div>
+          <div class="yt-result-actions">
+            <button class="yt-ingest-btn" data-url="${escapeHtml(v.url)}">Ingest</button>
+            <a href="${escapeHtml(v.url)}" target="_blank" class="yt-watch-btn">Watch</a>
           </div>
         </div>`;
       });
-      html += '</div>';
       addMessage('assistant', html, true);
       document.querySelectorAll('.yt-ingest-btn').forEach((btn) => {
         btn.addEventListener('click', async (e) => {
@@ -173,11 +136,11 @@ async function handleYTCommand(command, args) {
               body: JSON.stringify({ video_url: url }),
             });
             e.target.textContent = 'Ingested';
-            e.target.style.background = 'var(--success)';
+            e.target.classList.add('done');
             showToast('Video ingested successfully', 'success');
           } catch {
             e.target.textContent = 'Failed';
-            e.target.style.background = 'var(--error)';
+            e.target.classList.add('failed');
             showToast('Ingestion failed', 'error');
           }
         });
@@ -185,13 +148,12 @@ async function handleYTCommand(command, args) {
       return true;
     }
     case 'ytchannel': {
-      addMessage('assistant', '<div class="flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="7.5" cy="7.5" r="5" stroke-dasharray="10" stroke-dashoffset="3" style="animation:spin 0.8s linear infinite;transform-origin:center"/></svg> Fetching channel videos...</div>', true);
+      addMessage('assistant', '<em>Fetching channel videos...</em>', true);
       const data = await api('/yt/channel', {
         method: 'POST',
         body: JSON.stringify({ channel_url: args }),
       });
-      removeTypingIndicator();
-      addMessage('assistant', `<div style="color:var(--success);">✅ Ingested ${data.ingested_count} videos from channel.</div>`, true);
+      addMessage('assistant', `<div class="cmd-success">✅ Ingested ${data.ingested_count} videos from channel.</div>`, true);
       showToast(`Ingested ${data.ingested_count} videos`, 'success');
       return true;
     }
@@ -200,7 +162,7 @@ async function handleYTCommand(command, args) {
         method: 'POST',
         body: JSON.stringify({ channel_url: args }),
       });
-      addMessage('assistant', `<div style="color:var(--success);">✅ Subscribed to ${escapeHtml(data.channel_name)}. Auto-ingesting every 6h.</div>`, true);
+      addMessage('assistant', `<div class="cmd-success">✅ Subscribed to ${escapeHtml(data.channel_name)}. Auto-ingesting every 6h.</div>`, true);
       showToast(`Subscribed to ${data.channel_name}`, 'success');
       return true;
     }
@@ -210,21 +172,21 @@ async function handleYTCommand(command, args) {
         body: JSON.stringify({ sub_id: parseInt(args) }),
       });
       const ok = data.status === 'ok';
-      addMessage('assistant', `<div style="color:${ok ? 'var(--success)' : 'var(--error)'};">${ok ? '✅ Unsubscribed.' : '❌ Not found.'}</div>`, true);
+      addMessage('assistant', `<div class="${ok ? 'cmd-success' : 'cmd-error'}">${ok ? '✅ Unsubscribed.' : '❌ Not found.'}</div>`, true);
       if (ok) showToast('Unsubscribed', 'success');
       return true;
     }
     case 'ytsubs': {
       const subs = await api('/yt/subscriptions');
       if (subs.length === 0) {
-        addMessage('assistant', '<div style="color:var(--text-secondary);">No active subscriptions.</div>', true);
+        addMessage('assistant', '<em>No active subscriptions.</em>', true);
         return true;
       }
-      let html = '<div class="font-semibold text-sm mb-3" style="color:var(--cyan);">Subscriptions</div>';
+      let html = '<div class="cmd-results-title">Subscriptions</div>';
       subs.forEach((s) => {
-        html += `<div class="p-3 rounded-xl mb-2" style="background:var(--elevated);border:1px solid var(--border);">
-          <div class="font-medium text-sm">${escapeHtml(s.channel_name)}</div>
-          <div class="text-xs mt-1" style="color:var(--text-secondary);">Last checked: ${s.last_checked || 'never'} &middot; ID: ${s.id}</div>
+        html += `<div class="sub-item">
+          <div class="sub-name">${escapeHtml(s.channel_name)}</div>
+          <div class="sub-meta">Last checked: ${s.last_checked || 'never'} &middot; ID: ${s.id}</div>
         </div>`;
       });
       addMessage('assistant', html, true);
@@ -235,45 +197,23 @@ async function handleYTCommand(command, args) {
   }
 }
 
-function showSuggestion(suggestion) {
-  const container = document.createElement('div');
-  container.className = 'flex justify-start animate-fade-in-up';
-  container.style.marginTop = '-8px';
-  const bubble = document.createElement('div');
-  bubble.className = 'px-3 py-2 rounded-xl text-xs max-w-[85%] md:max-w-[75%] flex items-start gap-2';
-  Object.assign(bubble.style, {
-    background: 'var(--accent-soft)',
-    border: '1px solid var(--border)',
-    color: 'var(--text-secondary)',
-  });
-  bubble.innerHTML = `
-    <svg width="12" height="12" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.2" style="flex-shrink:0;margin-top:2px;color:var(--accent);">
-      <path d="M7.5 2v7M7.5 11v2"/>
-    </svg>
-    <span>${escapeHtml(suggestion.text)}</span>
-  `;
-  container.appendChild(bubble);
-  messagesEl.appendChild(container);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
-}
-
 async function handleReflectionCommand(command, args) {
   if (command !== 'reflections' && command !== 'reflection-today') return false;
 
   if (command === 'reflections') {
     const refs = await api('/api/reflections');
     if (!refs || refs.length === 0) {
-      addMessage('assistant', '<div style="color:var(--text-secondary);">No daily reflections yet. They are generated automatically each day.</div>', true);
+      addMessage('assistant', '<em>No daily reflections yet. They are generated automatically each day.</em>', true);
       return true;
     }
-    let html = '<div class="font-semibold text-sm mb-3" style="color:var(--cyan);">Daily Reflections</div>';
+    let html = '<div class="cmd-results-title">Daily Reflections</div>';
     refs.forEach((r) => {
       const topics = r.topics || [];
-      const topicTags = topics.map(t => `<span class="text-xs px-2 py-0.5 rounded-full" style="background:var(--accent-soft);color:var(--accent);">${escapeHtml(t)}</span>`).join(' ');
-      html += `<div class="p-3 rounded-xl mb-3" style="background:var(--elevated);border:1px solid var(--border);">
-        <div class="text-xs font-semibold mb-1" style="color:var(--text-secondary);">${escapeHtml(r.date)}</div>
-        <div class="mb-2 text-sm leading-relaxed">${marked.parse(r.summary)}</div>
-        ${topicTags ? `<div class="flex flex-wrap gap-1.5 mt-2">${topicTags}</div>` : ''}
+      const topicTags = topics.map(t => `<span class="topic-tag">${escapeHtml(t)}</span>`).join(' ');
+      html += `<div class="ref-item">
+        <div class="ref-date">${escapeHtml(r.date)}</div>
+        <div class="ref-summary">${marked.parse(r.summary)}</div>
+        ${topicTags ? `<div class="ref-topics">${topicTags}</div>` : ''}
       </div>`;
     });
     addMessage('assistant', html, true);
@@ -283,19 +223,19 @@ async function handleReflectionCommand(command, args) {
   if (command === 'reflection-today') {
     let ref = await api('/api/reflection/today');
     if (!ref) {
-      addMessage('assistant', '<div style="color:var(--text-secondary);">No reflection for today yet. Generating now...</div>', true);
+      addMessage('assistant', '<em>No reflection for today yet. Generating now...</em>', true);
       ref = await api('/api/reflection/generate', { method: 'POST' });
     }
     if (!ref || ref.error) {
-      addMessage('assistant', `<div style="color:var(--warning);">${escapeHtml(ref?.error || 'No messages today to reflect on.')}</div>`, true);
+      addMessage('assistant', `<div class="cmd-warning">${escapeHtml(ref?.error || 'No messages today to reflect on.')}</div>`, true);
       return true;
     }
     const topics = ref.topics || [];
-    const topicTags = topics.map(t => `<span class="text-xs px-2 py-0.5 rounded-full" style="background:var(--accent-soft);color:var(--accent);">${escapeHtml(t)}</span>`).join(' ');
-    let html = `<div class="font-semibold text-sm mb-2" style="color:var(--cyan);">Today's Reflection</div>
-      <div class="text-sm leading-relaxed mb-2">${marked.parse(ref.summary)}</div>`;
+    const topicTags = topics.map(t => `<span class="topic-tag">${escapeHtml(t)}</span>`).join(' ');
+    let html = `<div class="cmd-results-title">Today's Reflection</div>
+      <div class="ref-summary">${marked.parse(ref.summary)}</div>`;
     if (topicTags) {
-      html += `<div class="flex flex-wrap gap-1.5">${topicTags}</div>`;
+      html += `<div class="ref-topics">${topicTags}</div>`;
     }
     addMessage('assistant', html, true);
     return true;
@@ -315,7 +255,7 @@ async function handleKGCommand(command, args) {
         method: 'POST',
         body: JSON.stringify({ triples: [[rest, 'related to', 'topic']] }),
       });
-      addMessage('assistant', '<div style="color:var(--success);">✅ Relationships extracted.</div>', true);
+      addMessage('assistant', '<div class="cmd-success">✅ Relationships extracted.</div>', true);
       showToast('Relationships extracted', 'success');
       return true;
     }
@@ -325,35 +265,35 @@ async function handleKGCommand(command, args) {
         method: 'POST',
         body: JSON.stringify({ name: parts[0], type: parts[1] || 'concept', description: parts[2] || '' }),
       });
-      addMessage('assistant', `<div style="color:var(--success);">✅ Created entity: ${escapeHtml(data.name)} (ID: ${data.id})</div>`, true);
+      addMessage('assistant', `<div class="cmd-success">✅ Created entity: ${escapeHtml(data.name)} (ID: ${data.id})</div>`, true);
       return true;
     }
     case 'relate': {
       const parts = rest.split('|').map((s) => s.trim());
       if (parts.length < 2) {
-        addMessage('assistant', '<div style="color:var(--warning);">Usage: /kg relate source | target | relation</div>', true);
+        addMessage('assistant', '<div class="cmd-warning">Usage: /kg relate source | target | relation</div>', true);
         return true;
       }
       const data = await api('/kg/relation', {
         method: 'POST',
         body: JSON.stringify({ source_name: parts[0], target_name: parts[1], relationship_type: parts[2] || 'related to' }),
       });
-      addMessage('assistant', `<div style="color:var(--success);">✅ Related ${escapeHtml(parts[0])} → ${escapeHtml(parts[1])}</div>`, true);
+      addMessage('assistant', `<div class="cmd-success">✅ Related ${escapeHtml(parts[0])} → ${escapeHtml(parts[1])}</div>`, true);
       return true;
     }
     case 'list': {
       const entities = await api('/kg/entities');
       if (entities.length === 0) {
-        addMessage('assistant', '<div style="color:var(--text-secondary);">No entities in the knowledge graph.</div>', true);
+        addMessage('assistant', '<em>No entities in the knowledge graph.</em>', true);
         return true;
       }
-      let html = '<div class="font-semibold text-sm mb-3" style="color:var(--cyan);">Knowledge Graph Entities</div>';
+      let html = '<div class="cmd-results-title">Knowledge Graph Entities</div>';
       entities.forEach((e, i) => {
-        html += `<div class="flex items-center gap-3 p-2.5 rounded-lg mb-1.5" style="background:var(--elevated);border:1px solid var(--border);">
-          <span class="w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0" style="background:var(--accent-soft);color:var(--accent);">${i + 1}</span>
-          <div class="flex-1 min-w-0">
-            <div class="text-sm font-medium truncate">${escapeHtml(e.name)}</div>
-            <div class="text-xs" style="color:var(--text-secondary);">${escapeHtml(e.type)}${e.description ? ` — ${escapeHtml(e.description)}` : ''}</div>
+        html += `<div class="entity-item">
+          <div class="entity-num">${i + 1}</div>
+          <div class="entity-info">
+            <div class="entity-name">${escapeHtml(e.name)}</div>
+            <div class="entity-desc">${escapeHtml(e.type)}${e.description ? ` — ${escapeHtml(e.description)}` : ''}</div>
           </div>
         </div>`;
       });
@@ -361,7 +301,7 @@ async function handleKGCommand(command, args) {
       return true;
     }
     default:
-      addMessage('assistant', `<div class="text-sm" style="color:var(--text-secondary);">KG commands: extract &lt;text&gt;, add &lt;name&gt;[,type,desc], relate src | tgt | rel, list</div>`, true);
+      addMessage('assistant', '<em>KG commands: extract &lt;text&gt;, add &lt;name&gt;[,type,desc], relate src | tgt | rel, list</em>', true);
       return true;
   }
 }
@@ -376,25 +316,25 @@ async function sendMessage() {
     const args = spaceIdx === -1 ? '' : text.slice(spaceIdx + 1);
     addMessage('user', text);
     input.value = '';
-    input.style.height = 'auto';
+    resetInputHeight();
 
     try {
       if (await handleYTCommand(command, args)) return;
       if (await handleReflectionCommand(command, args)) return;
       if (await handleKGCommand(command, args)) return;
     } catch (err) {
-      addMessage('assistant', `<div style="color:var(--error);">❌ ${escapeHtml(err.message)}</div>`, true);
+      addMessage('assistant', `<div class="cmd-error">❌ ${escapeHtml(err.message)}</div>`, true);
       showToast(err.message, 'error');
       return;
     }
 
-    addMessage('assistant', `<div style="color:var(--text-secondary);">Unknown command: /${escapeHtml(command)}</div>`, true);
+    addMessage('assistant', `<em>Unknown command: /${escapeHtml(command)}</em>`, true);
     return;
   }
 
   addMessage('user', text);
   input.value = '';
-  input.style.height = 'auto';
+  resetInputHeight();
   isSending = true;
   sendBtn.disabled = true;
   sendIcon.style.display = 'none';
@@ -408,14 +348,14 @@ async function sendMessage() {
     });
     sessionId = data.session_id;
     removeTypingIndicator();
-    addMessage('assistant', data.reply);
+    addMessage('assistant', data.reply, false, data.sources || null);
     if (data.suggestion) {
       showSuggestion(data.suggestion);
     }
     loadSessions();
   } catch (err) {
     removeTypingIndicator();
-    addMessage('assistant', `<div style="color:var(--error);">Error: ${escapeHtml(err.message)}</div>`, true);
+    addMessage('assistant', `<div class="cmd-error">Error: ${escapeHtml(err.message)}</div>`, true);
     showToast(err.message, 'error');
   } finally {
     isSending = false;
@@ -426,31 +366,22 @@ async function sendMessage() {
   }
 }
 
+function resetInputHeight() {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 200) + 'px';
+}
+
 async function loadSessions() {
   const sessions = await api('/sessions');
   sessionListEl.innerHTML = '';
   sessions.forEach((s) => {
     const item = document.createElement('div');
     const isActive = s.session_id === sessionId;
-    item.className = `px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-150 ${isActive ? 'font-medium' : ''}`;
-    Object.assign(item.style, {
-      background: isActive ? 'var(--accent-soft)' : 'transparent',
-      color: isActive ? 'var(--accent)' : 'var(--text)',
-    });
-    item.onmouseenter = () => { if (!isActive) item.style.background = 'rgba(255,255,255,0.03)'; };
-    item.onmouseleave = () => { if (!isActive) item.style.background = 'transparent'; };
-
-    const title = document.createElement('div');
-    title.className = 'text-sm truncate';
-    title.textContent = s.title || '(empty)';
-
-    const meta = document.createElement('div');
-    meta.className = 'text-xs mt-0.5';
-    meta.style.color = 'var(--text-tertiary)';
-    meta.textContent = `${s.message_count} messages`;
-
-    item.appendChild(title);
-    item.appendChild(meta);
+    item.className = `session-item ${isActive ? 'active' : ''}`;
+    item.innerHTML = `
+      <div class="session-item-title">${escapeHtml(s.title || '(empty)')}</div>
+      <div class="session-item-meta">${s.message_count} messages</div>
+    `;
     item.addEventListener('click', () => loadSession(s.session_id));
     sessionListEl.appendChild(item);
   });
@@ -464,6 +395,7 @@ async function loadSession(id) {
   loadSessions();
   if (window.innerWidth < 768) {
     sidebar.dataset.open = 'false';
+    sidebarOverlay.classList.remove('active');
   }
 }
 
@@ -474,27 +406,22 @@ async function performSearch(query) {
     addMessage('assistant', `No messages found for "${query}"`);
     return;
   }
-  let html = `<div class="font-semibold text-sm mb-3" style="color:var(--cyan);">Search results for "${escapeHtml(query)}"</div>`;
+  let html = `<div class="cmd-results-title">Search results for "${escapeHtml(query)}"</div>`;
   results.forEach((m) => {
     const source = m._source || 'semantic';
-    const badgeColor = source === 'hybrid' ? 'var(--accent)' : source === 'semantic' ? 'var(--cyan)' : 'var(--warning)';
-    html += `<div class="p-3 rounded-xl mb-2 cursor-pointer transition-all duration-150 hover:opacity-80" style="background:var(--elevated);border:1px solid var(--border);" data-sid="${escapeHtml(m.session_id)}">
-      <div class="flex items-center gap-2 mb-1">
-        <span class="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded" style="background:${badgeColor}20;color:${badgeColor};">${source}</span>
-        <span class="text-xs" style="color:var(--text-tertiary);">${escapeHtml(m.session_id.slice(0, 8))}...</span>
-      </div>
-      <div class="text-sm">${escapeHtml(m.content.slice(0, 200))}${m.content.length > 200 ? '...' : ''}</div>
+    html += `<div class="search-result" data-sid="${escapeHtml(m.session_id)}">
+      <div class="search-source">${source}</div>
+      <div class="search-content">${escapeHtml(m.content.slice(0, 200))}${m.content.length > 200 ? '...' : ''}</div>
     </div>`;
   });
   addMessage('assistant', html, true);
-  document.querySelectorAll('[data-sid]').forEach((el) => {
+  document.querySelectorAll('.search-result').forEach((el) => {
     el.addEventListener('click', () => loadSession(el.dataset.sid));
   });
 }
 
 input.addEventListener('input', () => {
-  input.style.height = 'auto';
-  input.style.height = Math.min(input.scrollHeight, 200) + 'px';
+  resetInputHeight();
   sendBtn.disabled = !input.value.trim();
 });
 
@@ -516,35 +443,38 @@ searchInput.addEventListener('input', (e) => {
   debouncedSearch(e.target.value.trim());
 });
 
-sidebarToggle?.addEventListener('click', () => {
+function openSidebar() {
   sidebar.dataset.open = 'true';
-});
+  sidebarOverlay.classList.add('active');
+}
 
-sidebarClose?.addEventListener('click', () => {
+function closeSidebar() {
   sidebar.dataset.open = 'false';
-});
+  sidebarOverlay.classList.remove('active');
+}
+
+sidebarToggle?.addEventListener('click', openSidebar);
+sidebarClose?.addEventListener('click', closeSidebar);
+sidebarOverlay?.addEventListener('click', closeSidebar);
 
 newChatBtn?.addEventListener('click', () => {
   sessionId = null;
   messagesEl.innerHTML = '';
-  messagesEl.appendChild(emptyState);
+  if (emptyState) messagesEl.appendChild(emptyState);
   loadSessions();
   input.focus();
+  if (window.innerWidth < 768) closeSidebar();
 });
 
 themeToggle?.addEventListener('click', () => {
-  const isDark = document.documentElement.classList.toggle('dark');
-  document.body.classList.toggle('dark', isDark);
-  document.body.classList.toggle('light', !isDark);
-  themeIconDark.style.display = isDark ? '' : 'none';
-  themeIconLight.style.display = isDark ? 'none' : '';
-  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  const isLight = document.body.classList.toggle('light');
+  themeIconDark.style.display = isLight ? 'none' : '';
+  themeIconLight.style.display = isLight ? '' : 'none';
+  localStorage.setItem('theme', isLight ? 'light' : 'dark');
 });
 
 const savedTheme = localStorage.getItem('theme');
 if (savedTheme === 'light') {
-  document.documentElement.classList.remove('dark');
-  document.body.classList.remove('dark');
   document.body.classList.add('light');
   themeIconDark.style.display = 'none';
   themeIconLight.style.display = '';

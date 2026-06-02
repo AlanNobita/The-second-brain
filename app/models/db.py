@@ -136,7 +136,7 @@ def search_messages(query):
 
 def get_messages_by_ids(message_ids):
     #Takes a list of message ids and returns the full message dicts
-    if not message_ids: 
+    if not message_ids:
         return []
     placeholders = ",".join("?" * len(message_ids))
     conn = get_connection()
@@ -144,4 +144,12 @@ def get_messages_by_ids(message_ids):
     conn.close()
 
     messages = {row["id"]: dict(row) for row in rows}
-    return [messages[id_] for id_ in message_ids]
+    return [messages[id_] for id_ in message_ids if id_ in messages]
+
+
+def delete_session(session_id):
+    """Delete all messages associated with a session_id from the database."""
+    conn = get_connection()
+    conn.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
+    conn.commit()
+    conn.close()

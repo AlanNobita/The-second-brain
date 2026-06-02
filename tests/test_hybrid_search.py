@@ -1,17 +1,15 @@
 import pytest
 from unittest.mock import patch
-from app.models.db import get_connection, init_db, init_fts, search_messages_fts, save_message
+from app.models.db import get_connection, init_db, init_fts, save_message, search_messages_fts
+from app.models import db as db_module
 
 
 @pytest.fixture(autouse=True)
-def setup_db():
+def setup_db(tmp_path, monkeypatch):
+    """Use a temp DB so tests don't pollute the real second_brain.db."""
+    monkeypatch.setattr(db_module, "DB_PATH", str(tmp_path / "test_hybrid.db"))
     init_db()
     init_fts()
-    conn = get_connection()
-    conn.execute("DELETE FROM messages_fts")
-    conn.execute("DELETE FROM messages")
-    conn.commit()
-    conn.close()
 
 
 def test_init_fts_creates_table():

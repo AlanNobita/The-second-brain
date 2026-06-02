@@ -47,22 +47,25 @@ First startup creates:
 ```bash
 # Run tests (pytest comes with uv)
 uv run pytest
+
+# Run a single category
+uv run pytest tests/test_edge_cases.py -v
 ```
 
-### Test Coverage
+### Test Coverage (170 tests)
 
-**Core:**
+**Core (3):**
 
 | Test | Route | Asserts |
 |---|---|---|
 | `test_health_endpoing` | `GET /api/health` | Returns `{"status": "ok"}` |
 | `test_index_route` | `GET /` | Returns 200, contains "Second" |
 
-**YouTube (31 unit tests, 1 E2E script):**
+**YouTube (30 unit tests, 1 E2E script):**
 
 | Test file | Tests | What it covers |
 |---|---|---|
-| `test_youtube_db.py` | 9 | Subscription CRUD, dedup, reactivation, ingested videos |
+| `test_youtube_db.py` | 10 | Subscription CRUD, dedup, reactivation, `mark_inactive`, ingested videos, idempotent add |
 | `test_youtube_service.py` | 12 | URL parsing (all formats), transcript fetch, search, channel videos |
 | `test_note_service.py` | 4 | De-bloat cleanup, substance preservation, markdown format, file save |
 | `test_subscription_service.py` | 5 | Subscribe/unsub, due checking, auto-ingest pipeline |
@@ -74,12 +77,43 @@ uv run pytest
 | Test file | Tests | What it covers |
 |---|---|---|
 | `test_kg_db.py` | 7 | Entity/relationship CRUD, dedup, cascade delete, graph data, search |
-| `test_kg_service.py` | 6 | Service-layer CRUD, triple extraction, dedup, entity lookup, relationship delete |
+| `test_kg_service.py` | 9 | Service-layer CRUD, triple extraction, dedup, entity lookup, relationship delete |
 | `test_kg_routes.py` | 5 | HTTP 200/201/400/404, entity CRUD, relationship create, triple extraction |
+
+**Chat / Hybrid Search / AI (39 unit tests):**
+
+| Test file | Tests | What it covers |
+|---|---|---|
+| `test_chat_routes.py` | 5 | `/chat/send`, `/chat/history`, `/sessions`, `/session/<id>` DELETE, `/search` |
+| `test_hybrid_search.py` | 14 | FTS / vector / hybrid merge, dedup, score normalization, ordering |
+| `test_ai_source_attribution.py` | 10 | Source-aware RAG (YouTube vs chat classification, source list returned) |
+
+**Reflections (11 unit tests):**
+
+| Test file | Tests | What it covers |
+|---|---|---|
+| `test_reflection_db.py` | 5 | Save / get / list / exists for daily reflection rows |
+| `test_reflection_routes.py` | 6 | `GET /api/reflection/today`, `POST /api/reflection/generate`, list |
+| `test_proactive_service.py` | 4 | Proactive suggestions: recent cutoff, narrative generation, empty state |
+
+**Edge Cases (61 unit tests, `test_edge_cases.py`):**
+
+Ten categories of "what if a real user does this?" — empty / null / missing inputs, malformed JSON, 100 KB payloads, Unicode (Latin/CJK/emoji/Arabic), FTS5 special syntax (`*`, `AND`, `NEAR`, unclosed quotes, 1 000-char queries), concurrency, KG validation, YouTube edge cases, reflection edge cases, session lifecycle.
+
+If this file fails, the production code is wrong — do **not** change the test.
+
+**Senior None-Check Regression (6 unit tests, `test_senior_none_checks.py`):**
+
+Pinpoints a half-dozen silent-killer `None` checks added across services (kg_service, ai_service, proactive_service, reflection_service, embedding_service). Each test names the production file and line range, so a regression points directly at the spot to re-fix.
+
+**Run a single category:**
 
 ```bash
 # Run all YouTube tests
 pytest tests/test_youtube_db.py tests/test_youtube_service.py tests/test_note_service.py tests/test_subscription_service.py tests/test_youtube_routes.py -v
+
+# Run only edge case + regression tests
+pytest tests/test_edge_cases.py tests/test_senior_none_checks.py -v
 
 # Manual E2E
 python tests/e2e_youtube_manual.py

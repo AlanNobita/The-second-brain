@@ -56,12 +56,13 @@ Start a message with `/` to use special commands. Every command result is render
 | `/ytsearch <query>` | Search YouTube — result cards with an **Ingest** button on each |
 | `/reflections` | List recent daily reflections (date + summary + topic chips) |
 | `/reflection-today` | Get or generate today's reflection |
+| `/subscriptions` | List YouTube channel subscriptions (active + inactive + reason) |
 | `/kg add <name>,<type>,<desc>` | Add an entity to the knowledge graph — confirmation card |
 | `/kg list` | List all knowledge graph entities as cards |
 | `/kg` | Open the interactive knowledge graph view |
 | `/kg help` (or unknown subcommand) | Show the list of `/kg` subcommands |
 
-> Note: YouTube subscriptions and channel ingest are managed through the REST API (see `docs/API.md`) — they don't have chat commands yet.
+> Note: YouTube channel ingest (`POST /yt/channel`) is still managed through the REST API (see `docs/API.md`). Subscribe/unsubscribe and listing can be done from the chat via `/subscriptions`.
 
 Examples:
 - `/ytsearch python tutorial 2026` → click **Ingest** on the card you like

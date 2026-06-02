@@ -52,3 +52,5 @@ Open `http://localhost:5000`. For dev with HMR: `cd frontend && npm run dev` (pr
 | [Architecture](docs/ARCHITECTURE.md) | System design, data flow, diagrams |
 | [Development](docs/DEVELOPMENT.md) | Setup, testing, conventions |
 | [Frontend README](frontend/README.md) | Vite/React/TS stack, build, components |
+| [Changes Review (source attribution)](docs/CHANGES_REVIEW.md) | RAG source-aware classification & data recovery |
+| [Changes Review (silent-killer sweep)](docs/CHANGES_REVIEW_2.md) | FTS5 triggers, status codes, race conditions, hardening |

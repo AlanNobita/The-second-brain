@@ -10,11 +10,16 @@
 - [x] YouTube channel subscriptions (auto-ingest, scheduler)
 - [x] Obsidian note export
 - [x] Hybrid search (FTS5 + ChromaDB 50/50 blend)
-- [x] Knowledge Graph (entities, relationships, vis.js graph page, chat commands)
+- [x] Knowledge Graph (entities, relationships, React Flow view, chat commands)
 - [x] uv dependency management
 - [x] Daily reflection — summarize what was learned each day
 - [x] Proactive suggestions — AI notices connections during chat
 - [x] Background periodic tasks (daily reflection, weekly cleanup/VACUUM)
+- [x] Frontend migration: vanilla JS → Vite + React 18 + TypeScript SPA
+- [x] Markdown rendering: AI replies via `react-markdown` + `remark-gfm` (headings, lists, **bold**, *italic*, `code`, tables, task lists, strikethrough)
+- [x] Card-based slash command UI: `/ytsearch`, `/reflections`, `/reflection-today`, `/kg*` all render as typed `CommandResult` blocks via `CommandResults.tsx`
+- [x] Per-card Ingest button on YouTube search results (idle → loading → success → error)
+- [x] Vite build wired directly into `app/static/` (single `npm run build` → deployable bundle)
 
 ## Future Ideas
 
@@ -31,3 +36,7 @@
 - [ ] Multi-device sync
 - [ ] Export/backup all data
 - [ ] Search index rebuild tool
+- [ ] Streaming responses (replace the current wait-for-full-reply UX)
+- [ ] Code-block copy button + syntax highlighting (currently plain `<pre><code>`)
+- [ ] User authentication + per-user sessions (currently single-user)
+

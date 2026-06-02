@@ -5,7 +5,7 @@
 ```mermaid
 graph TB
     subgraph Frontend
-        UI[Vanilla HTML/CSS/JS]
+        UI[Vite + React 18 + TypeScript SPA]
     end
 
     subgraph "Flask Application"
@@ -18,6 +18,7 @@ graph TB
     subgraph Storage
         SQL[(SQLite)]
         CHR[(ChromaDB)]
+        FS[obsidian-ingest/ .md files]
     end
 
     subgraph External
@@ -25,7 +26,7 @@ graph TB
         YT[YouTube / yt-dlp]
     end
 
-    UI --> RP
+    UI -->|REST / JSON| RP
     RP --> SV
     RP --> KG
     SV --> MD
@@ -35,11 +36,14 @@ graph TB
     SV --> CHR
     SV --> OR
     SV --> YT
+    SV --> FS
 ```
+
+The Vite build (`frontend/`) writes directly into `app/static/` with `base: "/static/"`, so Flask serves the React bundle as its own static files. There is no separate static server and no CDN at runtime.
 
 ## Clean Architecture Layering
 
-The codebase follows a strict layered architecture. Inner layers never import from outer layers.
+The Python backend follows a strict layered architecture. Inner layers never import from outer layers.
 
 ```mermaid
 graph LR
@@ -68,16 +72,65 @@ graph LR
 | **Presentation** | `app/routes/` | Services, Flask |
 | **Domain** | `app/services/` | Models, external APIs |
 | **Data** | `app/models/` | SQLite only |
-| **Static** | `app/static/` | Nothing (served as-is) |
+| **Static** | `app/static/` | Nothing (built by Vite, served as-is) |
+
+## Frontend Architecture (React SPA)
+
+The frontend is a single-page React app, not a multi-page site.
+
+```mermaid
+graph TB
+    subgraph "frontend/src"
+        APP[App.tsx<br/>view + sessionId + messages + commandResult]
+        SHELL[AppShell<br/>sidebar + main]
+        CHATV[ChatView<br/>messages + commandResult + input]
+        MB[MessageBubble<br/>react-markdown + processChildren]
+        CR[CommandResults<br/>discriminated union on kind]
+        KG_VIEW[KnowledgeGraph<br/>React Flow]
+    end
+
+    APP --> SHELL
+    SHELL --> CHATV
+    SHELL --> KG_VIEW
+    CHATV --> MB
+    CHATV --> CR
+    MB -. "AI reply" .-> APP
+    CR -. "kind: youtube-search/reflections/..." .-> APP
+```
+
+### Slash command rendering
+
+`/ytsearch`, `/reflections`, `/reflection-today`, and `/kg*` are intercepted in `App.handleSend`. Each one calls the relevant API and stores the result in a typed `commandResult` slot instead of pushing a plain text message. `CommandResults` then switches on `result.kind` to render the appropriate card block.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant App
+    participant API as Flask API
+    participant CR as CommandResults
+    participant YT as /yt/ingest
+
+    User->>App: /ytsearch python
+    App->>API: GET /yt/search?q=python
+    API-->>App: YoutubeResult[]
+    App->>App: setCommandResult({kind:"youtube-search",...})
+    App->>CR: render card block
+    User->>CR: click Ingest on a card
+    CR->>YT: POST /yt/ingest {video_url}
+    YT-->>CR: {session_id, file_path, title}
+    CR->>CR: card → "Ingested" ✓
+```
+
+### Markdown rendering
+
+`MessageBubble.tsx` renders assistant messages through `ReactMarkdown` with `remark-gfm`. A `processChildren` helper walks string children of paragraph / list / heading elements and splits capitalized tokens (3+ chars) into clickable nodes that call `onNodeClick(label)` — opening the labeled concept in the knowledge graph. Inline `**bold**`, `*italic*`, `` `code` ``, links, tables, task lists, blockquotes, and strikethrough all render correctly.
 
 ### YouTube Ingestion
-
-YouTube features add an additional data flow:
 
 ```mermaid
 graph TB
     subgraph User
-        CHAT[Chat UI /yt commands]
+        CHAT[Chat /ytsearch command]
     end
 
     subgraph Backend
@@ -89,12 +142,12 @@ graph TB
         YDB[youtube_db]
     end
 
-    subgraph Storage2
+    subgraph Storage
         SQL2[(SQLite - youtube)]
         MD2[Obsidian .md files]
     end
 
-    subgraph External2
+    subgraph External
         YT_API[YouTube / yt-dlp]
         OR2[OpenRouter]
     end
@@ -117,7 +170,7 @@ graph TB
 graph TB
     subgraph User_KG
         KG_CMD[/kg chat commands]
-        GRAPH_PAGE[/graph page]
+        GRAPH_VIEW[/kg in chat opens React Flow]
     end
 
     subgraph Backend_KG
@@ -128,15 +181,13 @@ graph TB
 
     subgraph Storage_KG
         SQL_KG[(SQLite - entities, relationships)]
-        VIS[vis.js network]
     end
 
     KG_CMD --> KR
-    GRAPH_PAGE --> KR
+    GRAPH_VIEW --> KR
     KR --> KS
     KS --> KDB
     KDB --> SQL_KG
-    KR --> VIS
 ```
 
 ## Data Flow: Chat Request
@@ -166,6 +217,7 @@ sequenceDiagram
     AI->>EMB: store_embedding(msg_id, ai_content, session_id, "assistant")
     AI-->>Route: ai_content
     Route-->>Browser: {session_id, reply}
+    Browser->>Browser: MessageBubble renders reply via react-markdown
 ```
 
 ## Directory Structure
@@ -193,14 +245,26 @@ the-second-brain/
 │   │   ├── scheduler.py       # APScheduler periodic subscription check
 │   │   ├── memory_service.py     # (stub, unused)
 │   │   └── kg_service.py     # KG entity/relationship CRUD + triple extraction
-│   └── static/
-│       ├── index.html         # Chat UI
-│       ├── style.css          # Styling (incl. YT result cards)
-│       ├── js/
-│       │   └── graph.js        # vis.js graph visualization
-│       ├── css/
-│       │   └── graph.css        # Graph page themes (4 color schemes)
-│       └── script.js          # Frontend logic (incl. /yt command routing)
+│   └── static/                # Vite build output (frontend/ → app/static/)
+│       ├── index.html
+│       └── assets/
+│           ├── index-*.js    # bundle (react, react-markdown, reactflow, motion, ...)
+│           └── index-*.css   # Tailwind v4
+├── frontend/                  # Vite + React 18 + TypeScript source
+│   ├── index.html
+│   ├── package.json
+│   ├── tsconfig.json
+│   ├── vite.config.ts         # base: /static/, outDir: ../app/static
+│   └── src/
+│       ├── main.tsx
+│       ├── App.tsx
+│       ├── styles.css
+│       ├── lib/               # api.ts, types.ts
+│       └── components/
+│           ├── layout/        # AppShell, Sidebar, PulseDivider
+│           ├── chat/          # ChatView, MessageBubble, CommandResults, ...
+│           ├── graph/         # KnowledgeGraph (React Flow)
+│           └── ui/            # RippleButton
 ├── docs/                      # Documentation
 ├── tests/
 │   ├── conftest.py            # Pytest fixture
@@ -275,4 +339,7 @@ Collection: `messages`
 | **Embedding on every message** | Enables RAG across all past messages regardless of session |
 | **RAG filters current session** | Avoids retrieving the same session's messages as context; only cross-session knowledge is injected |
 | **Server-side session_id** | Generated by backend and returned to client, ensuring consistency |
-| **Vanilla JS frontend** | Minimal dependencies for MVP; framework migration planned for later phases |
+| **Vite → app/static build** | A single `npm run build` from `frontend/` produces the bundle Flask serves on port 5000 — no separate static server, no CDN at runtime |
+| **react-markdown for assistant replies** | Avoids custom parser bugs (malformed `**`, missed inline formatting) and handles GFM features (tables, task lists, strikethrough) for free |
+| **Discriminated `CommandResult` union** | Every slash command returns a typed block; `CommandResults` switches on `kind` so each command's UI lives in one place |
+| **React Flow for KG** | Interactive graph (zoom, pan, focus, expand 1-hop) out of the box; replaced the old vis.js page |

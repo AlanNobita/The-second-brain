@@ -2,6 +2,8 @@
 
 Base URL: `http://localhost:5000`
 
+The frontend is a Vite + React SPA built from `frontend/`. The production bundle is written into `app/static/` and served by Flask — no separate API gateway, no CDN. The frontend consumes every endpoint listed below via `frontend/src/lib/api.ts`.
+
 ## Health Check
 
 ```
@@ -315,7 +317,7 @@ The `focus_id` field is only present when `?q=` is provided.
 
 ### 2. GET /graph
 
-Returns the interactive graph HTML page.
+Returns the legacy standalone graph HTML page (vis.js). The primary way to view the graph in the React frontend is the `/kg` slash command, which opens a React Flow view of the same data. This legacy route is kept for backwards compatibility with bookmarks; new UI work happens in the React Flow component.
 
 ### 3. POST /kg/entity
 
@@ -424,6 +426,42 @@ List all entities.
     {"id": 1, "name": "Python", "type": "language", "description": "", "created_at": "..."}
 ]
 ```
+
+## Reflections
+
+Daily AI-generated summaries of the user's chat history. Used by the `/reflections` and `/reflection-today` slash commands; the result renders as cards in `CommandResults`.
+
+### 1. GET /api/reflections
+
+List the most recent daily reflections (newest first).
+
+**Response** `200 OK`:
+
+```json
+[
+    {
+        "date": "2026-06-02",
+        "summary": "Today's session traced a compelling arc from high-level systems thinking...",
+        "topics": ["healthcare policy and insurance", "Jetson Thor devkit", "Python tutorials"]
+    }
+]
+```
+
+### 2. GET /api/reflection/today
+
+Fetch the reflection for today, if it has already been generated.
+
+**Response** `200 OK` with a reflection object (same shape as the items in `/api/reflections`).
+
+**Response** `200 OK` with `null` if no reflection has been generated for today yet.
+
+### 3. POST /api/reflection/generate
+
+Run the daily reflection job (sends the day's user messages to OpenRouter, extracts topics, writes a summary). Idempotent for the same day.
+
+**Response** `201 Created` with the new reflection object on success.
+
+**Error** `400 Bad Request` with `{"error": "No messages to reflect on today"}` if there are no user messages from today.
 
 ## Error Responses
 

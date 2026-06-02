@@ -195,23 +195,95 @@ Raw SQLite data access:
 - `search_messages()` — `LIKE`-based keyword search
 - `get_messages_by_ids()` — bulk fetch by primary keys
 
-## Frontend (`app/static/`)
+## Frontend (`frontend/` → `app/static/`)
 
-Vanilla JS with no build step. CDN dependencies: `marked.js`, `vis-network` (for Knowledge Graph).
+Vite + React 18 + TypeScript SPA. The Vite build is configured to write directly into `../app/static/` with base path `/static/`, so Flask serves the bundle as its own static files — no separate static server, no CDN at runtime.
 
-### Key Functions (`script.js`)
+### Stack
 
-| Function | Trigger | Behavior |
-|---|---|---|
-| `sendMessage()` | Click / Enter | Intercepts `/` commands, else POST to `/chat/send` |
-| `handleYTCommand()` | `/yt` prefix | Routes `/ytsearch`, `/ytchannel`, `/ytsub`, `/ytunsub`, `/ytsubs` to API |
-| `handleKGCommand()` | `/kg` prefix | Routes `/kg extract`, `/kg add`, `/kg relate`, `/kg list` to KG API |
-| `loadSessions()` | Page load, after send | Fills sidebar from `/sessions` |
-| `loadSession(id)` | Click session | GET `/chat/history`, renders messages |
-| `performSearch(query)` | Type in search box | GET `/search`, renders results |
-| `showTypingIndicator()` | Before fetch | Animated dots |
-| `removeTypingIndicator()` | After response | Removes dots |
-| `escapeHtml(text)` | Helper | XSS-safe text rendering |
+- **Vite 6** — dev server + bundler
+- **React 18** + **TypeScript 5**
+- **Tailwind CSS v4** (via `@tailwindcss/vite`) with `oklch` design tokens
+- **Motion** (formerly Framer Motion) for animations
+- **Lucide React** for icons
+- **React Flow** for the knowledge graph view
+- **react-markdown** + **remark-gfm** for assistant-message markdown rendering
+
+### Frontend module layout
+
+```
+frontend/src/
+├── main.tsx                 # entry
+├── App.tsx                  # top-level state, view switching, slash command dispatch
+├── styles.css               # Tailwind v4 + design tokens (oklch)
+├── lib/
+│   ├── api.ts               # typed fetch wrapper, all backend calls
+│   └── types.ts             # Message, Session, Source, YoutubeResult, Reflection, ...
+└── components/
+    ├── layout/              # AppShell, Sidebar, PulseDivider
+    ├── chat/                # ChatSplash, ChatView, ChatInput, MessageBubble,
+    │                        #   AIStatus, CommandChip, CommandResults
+    ├── graph/               # KnowledgeGraph, GraphNode, NodeDetailsPanel, ParticleField
+    └── ui/                  # RippleButton
+```
+
+### Key components
+
+| Component | Role |
+|---|---|
+| `App.tsx` | Top-level state. Holds `view`, `sessionId`, `messages`, `commandResult`. `handleSend` intercepts `/`-prefixed input and dispatches to either a slash command or the regular chat endpoint. |
+| `AppShell` | Sidebar + main content shell. |
+| `ChatView` | Renders `messages` + the active `commandResult` block + the chat input. Auto-scrolls to bottom on new content. |
+| `MessageBubble` | Renders a single message. User messages use `whitespace-pre-wrap`; assistant messages go through `ReactMarkdown` with `remark-gfm` and custom component overrides. The `processChildren` helper walks string children of paragraph/list/heading elements and splits capitalized tokens (3+ chars) into clickable nodes that call `onNodeClick(label)`. |
+| `CommandResults` | Single component, discriminated-union switch on `result.kind`. Renders one of: `youtube-search`, `reflections`, `reflection-today`, `kg-list`, `kg-add`, `kg-help`. Each block has a header (icon + count + dismiss ×). The YouTube variant has a per-card Ingest button with idle / loading / success / error states. |
+| `KnowledgeGraph` | React Flow view of the KG, opened via `/kg` slash command. |
+
+### Slash command → result flow
+
+```text
+User types "/ytsearch python"
+        │
+        ▼
+App.handleSend
+        │
+        ├── yt_search(q) → YoutubeResult[]
+        │
+        ▼
+setCommandResult({ kind: "youtube-search", query, results })
+        │
+        ▼
+ChatView re-renders → <CommandResultsWrapper result={...} />
+        │
+        ▼
+CommandResults dispatches on kind → YouTube cards with Ingest buttons
+        │
+        ▼ (user clicks Ingest on one card)
+api.ytIngest(videoUrl) → 200 OK → card flips to "Ingested" ✓
+```
+
+### Vite → Flask build
+
+`frontend/vite.config.ts`:
+
+```ts
+base: "/static/",                              // emitted <script src="/static/...">
+build: { outDir: "../app/static", emptyOutDir: true }
+```
+
+This means `cd frontend && npm run build` produces a deployable bundle that `python run.py` serves on port 5000. `emptyOutDir: true` removes stale `index-*.js`/`index-*.css` hashes on every build so the served HTML always matches the latest bundle.
+
+### Dev workflow
+
+```bash
+# Terminal 1: backend
+python run.py          # http://localhost:5000
+
+# Terminal 2: frontend with HMR
+cd frontend
+npm run dev            # http://localhost:5173, proxies /api, /chat, /kg, /yt, /search to :5000
+```
+
+When you're ready to ship, `npm run build` writes the production bundle into `app/static/` and Flask picks it up immediately.
 
 ## Logging & Debugging
 
@@ -240,7 +312,10 @@ Areas to address for production deployment:
 | 0-4 | Foundation, CRUD, AI Chat, Semantic Memory | ✅ |
 | YouTube | Transcript ingestion, de-bloat, subscriptions, scheduler | ✅ |
 | Hybrid Search | FTS5 keyword + ChromaDB vector blend (50/50) | ✅ |
-| Phase 5 | Knowledge Graph — entities, relationships, vis.js graph page | ✅ |
+| Phase 5 | Knowledge Graph — entities, relationships, React Flow view (replaced legacy vis.js page) | ✅ |
+| Frontend | Vanilla JS → Vite + React 18 + TypeScript SPA, builds to `app/static/` | ✅ |
+| Markdown | Assistant replies via `react-markdown` + `remark-gfm` | ✅ |
+| Slash commands | Card-based UI via `CommandResults.tsx` (discriminated `CommandResult` union) | ✅ |
 
 ## Upcoming Phases
 

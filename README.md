@@ -6,16 +6,25 @@ Spend less time tracking knowledge — more time using it, thinking, and creatin
 
 ## Quick Start
 
-Requires `uv` (install via `pip install uv`).
+Requires `uv` (install via `pip install uv`) and Node 18+ for the frontend.
 
 ```bash
+# Backend
 uv venv .venv && source .venv/bin/activate
 uv pip install -r requirements.txt
 cp .example.env .env   # add your OPENROUTER_API_KEY
+
+# Frontend (Vite + React, builds straight into app/static/)
+cd frontend
+npm install
+npm run build           # writes ../app/static/index.html + assets/
+cd ..
+
+# Run
 python run.py
 ```
 
-Open `http://localhost:5000`
+Open `http://localhost:5000`. For dev with HMR: `cd frontend && npm run dev` (proxies API to `:5000`).
 
 ## Features
 
@@ -28,10 +37,11 @@ Open `http://localhost:5000`
 | YouTube ingestion (transcript, search) | ✅ |
 | YouTube channel subscriptions | ✅ |
 | Obsidian note export | ✅ |
-| Knowledge Graph (entities + relationships) | ✅ |
+| Knowledge Graph (entities + relationships, React Flow view) | ✅ |
 | Hybrid search (FTS5 + vector) | ✅ |
-
-## Documentation
+| Markdown rendering (`react-markdown` + GFM) | ✅ |
+| Card-based slash command UI (`/ytsearch`, `/reflections`, `/kg*`) | ✅ |
+| Daily reflection + proactive suggestions | ✅ |
 
 ## Documentation
 
@@ -41,3 +51,4 @@ Open `http://localhost:5000`
 | [API Reference](docs/API.md) | All HTTP endpoint documentation |
 | [Architecture](docs/ARCHITECTURE.md) | System design, data flow, diagrams |
 | [Development](docs/DEVELOPMENT.md) | Setup, testing, conventions |
+| [Frontend README](frontend/README.md) | Vite/React/TS stack, build, components |

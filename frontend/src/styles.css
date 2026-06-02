@@ -1,0 +1,168 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-primary-glow: var(--primary-glow);
+  --color-accent-teal: var(--accent-teal);
+  --color-success: var(--success);
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: oklch(0.16 0.025 265);
+  --foreground: oklch(0.96 0.01 250);
+  --surface: oklch(0.20 0.028 265);
+  --surface-hover: oklch(0.26 0.030 220);
+  --surface-elevated: oklch(0.23 0.030 265);
+  --card: oklch(0.20 0.028 265);
+  --card-foreground: oklch(0.96 0.01 250);
+  --popover: oklch(0.20 0.028 265);
+  --popover-foreground: oklch(0.96 0.01 250);
+  --primary: oklch(0.62 0.22 290);
+  --primary-foreground: oklch(0.98 0.005 250);
+  --primary-glow: oklch(0.72 0.18 280);
+  --accent-teal: oklch(0.70 0.12 200);
+  --success: oklch(0.75 0.18 155);
+  --node-python: oklch(0.82 0.17 90);
+  --node-postgres: oklch(0.72 0.18 155);
+  --node-react: oklch(0.75 0.15 220);
+  --node-ai: oklch(0.68 0.22 320);
+  --node-data: oklch(0.78 0.15 30);
+  --secondary: oklch(0.26 0.030 265);
+  --secondary-foreground: oklch(0.96 0.01 250);
+  --muted: oklch(0.24 0.025 265);
+  --muted-foreground: oklch(0.65 0.025 250);
+  --accent: oklch(0.26 0.030 265);
+  --accent-foreground: oklch(0.96 0.01 250);
+  --destructive: oklch(0.65 0.22 25);
+  --destructive-foreground: oklch(0.98 0.005 250);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 10%);
+  --ring: oklch(0.62 0.22 290);
+  --gradient-primary: linear-gradient(135deg, oklch(0.62 0.22 290), oklch(0.72 0.18 280));
+  --gradient-divider: linear-gradient(180deg, transparent 0%, oklch(0.70 0.12 200 / 60%) 30%, oklch(0.62 0.22 290 / 70%) 70%, transparent 100%);
+  --shadow-glow-primary: 0 0 24px oklch(0.62 0.22 290 / 50%), inset 0 0 12px oklch(0.72 0.18 280 / 25%);
+  --shadow-glow-success: 0 0 14px oklch(0.75 0.18 155 / 70%);
+  --sidebar: oklch(0.18 0.025 265);
+  --sidebar-foreground: oklch(0.96 0.01 250);
+  --sidebar-primary: oklch(0.62 0.22 290);
+  --sidebar-primary-foreground: oklch(0.98 0.005 250);
+  --sidebar-accent: oklch(0.24 0.028 265);
+  --sidebar-accent-foreground: oklch(0.96 0.01 250);
+  --sidebar-border: oklch(1 0 0 / 6%);
+  --sidebar-ring: oklch(0.62 0.22 290);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+    font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+  html, body, #root {
+    height: 100%;
+    overflow: hidden;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 var(--success), 0 0 8px var(--success); opacity: 1; }
+  50% { box-shadow: 0 0 0 6px transparent, 0 0 16px var(--success); opacity: 0.85; }
+}
+@keyframes divider-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.95; }
+}
+@keyframes float-sway {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(3px, -4px); }
+  50% { transform: translate(-2px, -2px); }
+  75% { transform: translate(-3px, 3px); }
+}
+@keyframes ripple-anim {
+  to { transform: scale(2.4); opacity: 0; }
+}
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.pulse-dot { animation: pulse-glow 2.2s ease-in-out infinite; }
+.float-sway { animation: float-sway 7s ease-in-out infinite; }
+.divider-pulse { animation: divider-pulse 4s ease-in-out infinite; }
+.fade-in-up { animation: fade-in-up 0.3s ease-out; }
+
+.react-flow__edge-path {
+  stroke: oklch(0.55 0.08 240 / 50%);
+  stroke-width: 1;
+  transition: stroke 250ms ease, stroke-width 250ms ease, filter 250ms ease;
+}
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge.connected .react-flow__edge-path {
+  stroke: oklch(0.72 0.18 280);
+  stroke-width: 1.5;
+  filter: drop-shadow(0 0 4px oklch(0.62 0.22 290 / 80%));
+}
+.react-flow__attribution { display: none !important; }
+.react-flow__controls {
+  background: oklch(0.20 0.028 265 / 70%) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border) !important;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: none !important;
+}
+.react-flow__controls-button {
+  background: transparent !important;
+  color: var(--foreground) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+.react-flow__controls-button:hover { background: var(--surface-hover) !important; }
+.react-flow__controls-button svg { fill: currentColor; }
+
+.scrollbar-thin::-webkit-scrollbar { width: 6px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: oklch(1 0 0 / 8%); border-radius: 3px; }
+.scrollbar-thin::-webkit-scrollbar-thumb:hover { background: oklch(1 0 0 / 14%); }

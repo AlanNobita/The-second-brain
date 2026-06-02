@@ -121,7 +121,7 @@ export function ChatView({
         )}
       </div>
 
-      <ChatInput onSend={onSend} disabled={loading} />
+      <ChatInput onSend={onSend} disabled={loading || streaming} />
     </motion.div>
   );
 }

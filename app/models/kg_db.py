@@ -47,6 +47,8 @@ def add_entity(name, type="concept", description=""):
             eid = cur.lastrowid
         except sqlite3.IntegrityError:
             row = conn.execute("SELECT id FROM entities WHERE name = ?", (name,)).fetchone()
+            if row is None:
+                raise
             eid = row["id"]
     finally:
         conn.close()
@@ -125,7 +127,7 @@ def get_graph_data():
     entities = get_all_entities()
     rels = get_all_relationships()
     nodes = [{"id": e["id"], "label": e["name"], "title": e["type"], "description": e["description"]} for e in entities]
-    edges = [{"from": r["source_entity_id"], "to": r["target_entity_id"], "label": r["relationship_type"], "value": r["weight"]} for r in rels]
+    edges = [{"rel_id": r["id"], "from": r["source_entity_id"], "to": r["target_entity_id"], "label": r["relationship_type"], "value": r["weight"]} for r in rels]
     return {"nodes": nodes, "edges": edges}
 
 

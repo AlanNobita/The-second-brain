@@ -20,19 +20,19 @@ def init_embedding_service():
     _collection = _client.get_or_create_collection(name="messages")
 
 
-def generate_embedding(text): 
+def generate_embedding(text):
     """Convert text to a vector."""
     if _model is None:
-        return [0.0] * 384
+        raise RuntimeError("Embedding model not initialized. Call init_embedding_service() first.")
     return _model.encode(text).tolist()
 
 def store_embedding(message_id, text, session_id, role):
     """Generate embedding and store in Chromadb with metadata"""
-    embedding = generate_embedding(text)
     if _collection is None:
-        return
+        raise RuntimeError("ChromaDB collection not initialized")
+    embedding = generate_embedding(text)
     _collection.add(
-        embeddings=[embedding], 
+        embeddings=[embedding],
         ids = [str(message_id)],
         metadatas = [{"session_id": session_id, "role": role}]
     )
@@ -40,7 +40,7 @@ def store_embedding(message_id, text, session_id, role):
 def semantic_search(query, limit = 10):
     """Search ChromaDB for messages similar to the query."""
     query_embedding = generate_embedding(query)
-    assert _collection is not None, "init_embedding_service() mmust be called first."
+    assert _collection is not None, "init_embedding_service() must be called first."
     
     results = _collection.query(
         query_embeddings=[query_embedding], 
@@ -51,7 +51,6 @@ def semantic_search(query, limit = 10):
 
 def delete_session_embeddings(session_id):
     """Delete all embeddings associated with a session_id from ChromaDB."""
-    global _collection
     if _collection is None:
         return
     _collection.delete(where={"session_id": session_id})

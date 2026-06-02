@@ -1,6 +1,6 @@
 from openai import OpenAI
 from flask import current_app
-# from .memory_service import get_or_create_session
+from .memory_service import get_or_create_session
 from ..models.db import save_message, get_message
 from .embedding_service import store_embedding
 from .embedding_service import semantic_search
@@ -36,11 +36,10 @@ def _extract_yt_title(content: str) -> str | None:
 def _resolve_yt_url(session_id: str) -> str | None:
     """Look up the YouTube URL for a given yt_* session_id from ingested_videos."""
     try:
-        from ..models.youtube_db import get_ingested_videos
-        ingested = get_ingested_videos(limit=1000)
-        for row in ingested:
-            if row["session_id"] == session_id:
-                return row["video_url"]
+        from ..models.youtube_db import get_ingested_video_by_session
+        row = get_ingested_video_by_session(session_id)
+        if row:
+            return row["video_url"]
     except Exception as e:
         logger.debug("Could not resolve YT url for %s: %s", session_id, e)
     return None
@@ -52,18 +51,30 @@ def _youtube_search_url(title: str) -> str:
     return f"https://www.youtube.com/results?search_query={quote_plus(title)}"
 
 
-def _lazy_youtube_check():
+def _lazy_youtube_check(app):
     try:
-        from .subscription_service import check_due_subscriptions
-        result = check_due_subscriptions()
-        if result and result.get("ingested_count", 0) > 0:
-            logger.info("Lazy YouTube check ingested %s videos", result["ingested_count"])
+        with app.app_context():
+            from .subscription_service import check_due_subscriptions, has_due_subscriptions
+            if not has_due_subscriptions():
+                return
+            result = check_due_subscriptions()
+            if result and result.get("ingested_count", 0) > 0:
+                logger.info("Lazy YouTube check ingested %s videos", result["ingested_count"])
     except Exception as e:
         logger.debug("Lazy YouTube check skipped: %s", e)
 
 def get_ai_response(session_id, user_message):
+    # Track whether this is a brand-new session
+    try:
+        session_info = get_or_create_session(session_id)
+        if session_info["created"]:
+            logger.info("New chat session started: %s", session_id)
+    except ValueError as e:
+        logger.warning("Invalid session_id passed to get_ai_response: %s", e)
+        raise
+
     # Lazy YouTube check in background
-    Thread(target=_lazy_youtube_check, daemon=True).start()
+    Thread(target=_lazy_youtube_check, args=(current_app._get_current_object(),), daemon=True).start()
 
     # Save user message
     msg_id = save_message(session_id=session_id, role="user", content=user_message)
@@ -172,6 +183,9 @@ def get_ai_response(session_id, user_message):
         messages=messages #type: ignore
     )
     ai_content = response.choices[0].message.content
+    if ai_content is None:
+        logger.warning("LLM returned no content; saving empty reply")
+        ai_content = ""
 
     # Save AI response
     msg_id = save_message(session_id=session_id, role="assistant", content=ai_content)

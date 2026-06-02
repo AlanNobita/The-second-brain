@@ -72,6 +72,8 @@ def extract_triples(triples):
     for source_name, rel_type, target_name in triples:
         s = create_entity(source_name.strip())
         t = create_entity(target_name.strip())
+        if s is None or t is None:
+            continue
         create_relationship(s["id"], t["id"], rel_type.strip())
     after = set(e["name"] for e in get_all_entities())
     entities_created = len(after - before)

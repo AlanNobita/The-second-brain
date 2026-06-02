@@ -3,7 +3,8 @@ from ..models.youtube_db import (
     remove_subscription as db_remove_sub,
     get_subscriptions as db_get_subs,
     get_subscription as db_get_sub,
-    update_last_checked, mark_subscription_inactive,
+    mark_subscription_inactive as db_mark_inactive,
+    update_last_checked,
     add_ingested_video, is_video_ingested,
 )
 from .youtube_service import get_channel_videos, fetch_transcript
@@ -41,6 +42,7 @@ def check_subscription(sub_id):
         videos = get_channel_videos(sub["channel_url"], max_results=5)
     except Exception as e:
         logger.warning("check_subscription(%s) — get_channel_videos failed: %s", sub_id, e)
+        db_mark_inactive(sub_id, reason="yt_404")
         return 0
     new_count = 0
     for video in videos:
@@ -80,13 +82,18 @@ def has_due_subscriptions():
 def check_due_subscriptions():
     subs = db_get_subs(only_active=True)
     one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+    checked = 0
+    ingested_count = 0
     for sub in subs:
         if sub["last_checked"] is not None and sub["last_checked"] >= one_hour_ago:
             continue
         try:
-            check_subscription(sub["id"])
+            n = check_subscription(sub["id"])
+            checked += 1
+            ingested_count += n
         except Exception as e:
             logger.warning("check_due_subscriptions — sub %s failed: %s", sub["id"], e)
+    return {"checked": checked, "ingested_count": ingested_count}
 
 
 def _ingest_single_video(video, channel_name):

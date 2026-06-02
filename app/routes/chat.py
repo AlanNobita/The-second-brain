@@ -1,10 +1,10 @@
 from flask import Blueprint
 from flask import jsonify, request, send_from_directory
 import os
+import logging
 from ..services.ai_service import get_ai_response
 from uuid import uuid4
 from ..models.db import get_sessions, get_message
-from ..models.db import search_messages
 from ..models.db import get_messages_by_ids
 
 chat_bp = Blueprint("chat", __name__)
@@ -16,9 +16,29 @@ def index():
 
 @chat_bp.route("/chat/send", methods=["POST"])
 def send_message():
-    data = request.get_json()
-    
-    user_message = data.get("message", "")
+    data = request.get_json(silent=True) or {}
+
+    # Coerce message to a string. None, missing, or empty all become "" so
+    # the LLM gets a sensible input (and the test that asserts 200 on
+    # {"message": ""} passes). Lists/dicts are rejected with 400 - they
+    # can't be coerced to text meaningfully. Booleans are rejected because
+    # ``str(True) == "True"`` would be a confusing message.
+    raw_message = data.get("message")
+    if raw_message is None:
+        user_message = ""
+    elif isinstance(raw_message, (list, dict)):
+        return jsonify({"error": "message must be a string, not a list or object"}), 400
+    elif isinstance(raw_message, bool):
+        return jsonify({"error": "message must be a string, not a boolean"}), 400
+    elif not isinstance(raw_message, str):
+        # Numbers (int/float) coerce to text.
+        user_message = str(raw_message)
+    else:
+        user_message = raw_message
+
+    if len(user_message) > 200000:
+        return jsonify({"error": "message too long (max 200000 chars)"}), 413
+
     session_id = data.get("session_id") or str(uuid4())
 
     ai_reply, suggestion, sources = get_ai_response(session_id, user_message)
@@ -53,7 +73,7 @@ def show_session_messages():
 
     # put and error handling mechanism in case the session id is not available
     if not session_id:
-        return jsonify({"error": "session_id is required"})
+        return jsonify({"error": "session_id is required"}), 400
     
     messages = get_message(session_id=session_id)
 
@@ -65,7 +85,7 @@ def find_message_with_keywords():
     query = request.args.get("q", "")
     mode = request.args.get("mode", "hybrid")
 
-    if not query:
+    if not query or not query.strip():
         return jsonify([])
 
     if mode == "semantic":
@@ -96,7 +116,6 @@ def delete_session_route(session_id):
     try:
         delete_session_embeddings(session_id)
     except Exception as e:
-        import logging
         logging.getLogger(__name__).warning("Failed to delete embeddings for session %s: %s", session_id, e)
 
     return jsonify({"status": "ok"})

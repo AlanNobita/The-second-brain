@@ -12,11 +12,14 @@ import {
   Sparkles,
   Network,
   Plus,
+  List,
   Hash,
   Calendar,
+  Rss,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { YoutubeResult, Reflection } from "@/lib/types";
+import { SubscriptionsPanel } from "@/components/subscriptions/SubscriptionsPanel";
 
 export interface KGEntity {
   id?: number;
@@ -31,7 +34,8 @@ export type CommandResult =
   | { kind: "reflection-today"; reflection: Reflection | null }
   | { kind: "kg-list"; entities: KGEntity[] }
   | { kind: "kg-add"; entity: KGEntity }
-  | { kind: "kg-help" };
+  | { kind: "kg-help" }
+  | { kind: "subscriptions" };
 
 interface CommandResultsProps {
   result: CommandResult;
@@ -230,19 +234,16 @@ function EmptyState({ icon, message }: { icon: ReactNode; message: string }) {
 function ResultHeader({
   icon,
   title,
-  right,
   onDismiss,
 }: {
   icon: ReactNode;
   title: ReactNode;
-  right?: ReactNode;
   onDismiss: () => void;
 }) {
   return (
     <div className="mb-3 flex items-center justify-between gap-2 border-b border-border/40 pb-2">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">{icon}{title}</div>
       <div className="flex items-center gap-2">
-        {right}
         <button
           onClick={onDismiss}
           className="rounded p-1 text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
@@ -402,7 +403,7 @@ export function CommandResults({ result, onDismiss, onNodeClick }: CommandResult
           />
           <div className="flex flex-col gap-1.5 text-sm">
             <div className="flex items-center gap-2 rounded-md border border-border/40 bg-background/30 px-2.5 py-1.5">
-              <Plus className="size-3 text-muted-foreground" />
+              <List className="size-3 text-muted-foreground" />
               <code className="font-mono text-xs text-foreground">/kg list</code>
               <span className="ml-auto text-[11px] text-muted-foreground">list entities</span>
             </div>
@@ -412,7 +413,7 @@ export function CommandResults({ result, onDismiss, onNodeClick }: CommandResult
               <span className="ml-auto text-[11px] text-muted-foreground">create entity</span>
             </div>
             <div className="flex items-center gap-2 rounded-md border border-border/40 bg-background/30 px-2.5 py-1.5">
-              <Plus className="size-3 text-muted-foreground" />
+              <Network className="size-3 text-muted-foreground" />
               <code className="font-mono text-xs text-foreground">/kg</code>
               <span className="ml-auto text-[11px] text-muted-foreground">open graph view</span>
             </div>
@@ -421,10 +422,25 @@ export function CommandResults({ result, onDismiss, onNodeClick }: CommandResult
       );
       break;
     }
+
+    case "subscriptions": {
+      body = (
+        <>
+          <ResultHeader
+            icon={<Rss className="size-3.5 text-accent-teal" />}
+            title={<span className="font-semibold text-foreground">YouTube subscriptions</span>}
+            onDismiss={onDismiss}
+          />
+          <SubscriptionsPanel />
+        </>
+      );
+      break;
+    }
   }
 
   return (
     <motion.div
+      key={result.kind}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -4 }}

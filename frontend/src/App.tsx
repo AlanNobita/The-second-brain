@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, Search } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
@@ -12,12 +12,9 @@ import type { Message, Source, Suggestion } from "@/lib/types";
 type View = "chat" | "graph" | "search";
 
 interface SearchResult {
-  id?: number;
   session_id: string;
-  role: string;
   content: string;
   _source?: string;
-  _score?: number;
 }
 
 export default function App() {
@@ -32,16 +29,24 @@ export default function App() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [commandResult, setCommandResult] = useState<CommandResult | null>(null);
+  const [pendingFocus, setPendingFocus] = useState<string | null>(null);
+  // Guards against the loadHistory race: when the user clicks session A
+  // (slow) then session B (fast), A's response arrives last and overwrites
+  // B's messages. The counter ensures only the latest request's result
+  // touches state.
+  const historyReqIdRef = useRef(0);
 
   const loadHistory = useCallback(async (id: string) => {
+    const myReq = ++historyReqIdRef.current;
+    setLoading(true);
     try {
-      setLoading(true);
       const data = await api.getHistory(id);
+      if (myReq !== historyReqIdRef.current) return; // stale
       setMessages(data.messages);
     } catch (e: any) {
-      setError(e.message);
+      if (myReq === historyReqIdRef.current) setError(e.message);
     } finally {
-      setLoading(false);
+      if (myReq === historyReqIdRef.current) setLoading(false);
     }
   }, []);
 
@@ -59,6 +64,9 @@ export default function App() {
     async (id: string) => {
       setSessionId(id);
       setCommandResult(null);
+      setPendingSources(undefined);
+      setPendingSuggestion(undefined);
+      setError(null);
       setView("chat");
       await loadHistory(id);
     },
@@ -111,6 +119,11 @@ export default function App() {
         } finally {
           setLoading(false);
         }
+        return;
+      }
+
+      if (text === "/subscriptions") {
+        setCommandResult({ kind: "subscriptions" });
         return;
       }
 
@@ -200,7 +213,7 @@ export default function App() {
   );
 
   const handleNodeClick = useCallback((label: string) => {
-    console.log("Open graph focused on", label);
+    setPendingFocus(label);
     setView("graph");
   }, []);
 
@@ -241,7 +254,10 @@ export default function App() {
             transition={{ duration: 0.25 }}
             className="h-full"
           >
-            <KnowledgeGraph />
+            <KnowledgeGraph
+              focusLabel={pendingFocus}
+              onFocusConsumed={() => setPendingFocus(null)}
+            />
           </motion.div>
         ) : view === "search" ? (
           <motion.div

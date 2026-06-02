@@ -1,5 +1,5 @@
+import * as React from "react";
 import { useState } from "react";
-import { motion } from "motion/react";
 
 interface RippleButtonProps {
   children: React.ReactNode;

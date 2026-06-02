@@ -14,7 +14,7 @@ def create_app():
     # store config on the app so routes can access it
     app.config.from_object(Config)
 
-    # Initialize daatabase
+    # Initialize database
     init_db()
     init_youtube_db()
     init_fts()

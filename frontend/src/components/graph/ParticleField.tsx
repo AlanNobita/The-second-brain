@@ -11,12 +11,18 @@ export function ParticleField() {
 
     let raf = 0;
     const dpr = window.devicePixelRatio || 1;
-    let w = (canvas.width = canvas.offsetWidth * dpr);
-    let h = (canvas.height = canvas.offsetHeight * dpr);
+    let w = canvas.offsetWidth * dpr;
+    let h = canvas.offsetHeight * dpr;
+    if (w === 0 || h === 0) return;
+    canvas.width = w;
+    canvas.height = h;
 
     const onResize = () => {
-      w = canvas.width = canvas.offsetWidth * dpr;
-      h = canvas.height = canvas.offsetHeight * dpr;
+      w = canvas.offsetWidth * dpr;
+      h = canvas.offsetHeight * dpr;
+      if (w === 0 || h === 0) return;
+      canvas.width = w;
+      canvas.height = h;
     };
     window.addEventListener("resize", onResize);
 

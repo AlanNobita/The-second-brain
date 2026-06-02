@@ -1,3 +1,4 @@
+import * as React from "react";
 import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import {
@@ -6,6 +7,7 @@ import {
   Plus,
   Network,
   Sun,
+  Moon,
   MessageSquare,
   Trash2,
 } from "lucide-react";
@@ -33,7 +35,23 @@ export function Sidebar({
   const [sessions, setSessions] = useState<Session[]>([]);
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
+  const [isDark, setIsDark] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("theme");
+    const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
+    const dark = stored ? stored === "dark" : prefersDark;
+    setIsDark(dark);
+    document.documentElement.classList.toggle("dark", dark);
+  }, []);
+
+  const toggleTheme = () => {
+    const next = !isDark;
+    setIsDark(next);
+    document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("theme", next ? "dark" : "light");
+  };
 
   const loadSessions = async () => {
     try {
@@ -196,10 +214,15 @@ export function Sidebar({
             </span>
           </button>
           <button
+            onClick={toggleTheme}
             className="text-muted-foreground transition-colors hover:text-foreground"
             aria-label="Toggle theme"
           >
-            <Sun className="size-3.5" strokeWidth={1.5} />
+            {isDark ? (
+              <Sun className="size-3.5" strokeWidth={1.5} />
+            ) : (
+              <Moon className="size-3.5" strokeWidth={1.5} />
+            )}
           </button>
         </div>
       </div>

@@ -15,7 +15,7 @@ def init_scheduler(app):
     interval = app.config.get("YT_CHECK_INTERVAL_HOURS", 6)
 
     _scheduler.add_job(
-        func=_check_subs_job,
+        func=lambda: _check_subs_job(app),
         trigger="interval",
         hours=interval,
         id="yt_sub_check",
@@ -23,7 +23,7 @@ def init_scheduler(app):
     )
 
     _scheduler.add_job(
-        func=_daily_reflection_job,
+        func=lambda: _daily_reflection_job(app),
         trigger="cron",
         hour=23,
         minute=30,
@@ -32,7 +32,7 @@ def init_scheduler(app):
     )
 
     _scheduler.add_job(
-        func=_weekly_cleanup_job,
+        func=lambda: _weekly_cleanup_job(app),
         trigger="interval",
         days=7,
         id="weekly_cleanup",
@@ -54,31 +54,34 @@ def shutdown_scheduler():
         logger.info("Scheduler shut down")
 
 
-def _check_subs_job():
-    from .subscription_service import check_all_subscriptions
-    result = check_all_subscriptions()
-    logger.info("Scheduler sub check complete: %r", result)
+def _check_subs_job(app):
+    with app.app_context():
+        from .subscription_service import check_all_subscriptions
+        result = check_all_subscriptions()
+        logger.info("Scheduler sub check complete: %r", result)
 
 
-def _daily_reflection_job():
+def _daily_reflection_job(app):
     from .reflection_service import generate_daily_reflection
     logger.info("Running daily reflection job")
     try:
-        result = generate_daily_reflection()
-        if result:
-            logger.info("Daily reflection generated: %s topics", len(result.get("topics", [])))
-        else:
-            logger.info("No daily reflection generated (no messages today)")
+        with app.app_context():
+            result = generate_daily_reflection()
+            if result:
+                logger.info("Daily reflection generated: %s topics", len(result.get("topics", [])))
+            else:
+                logger.info("No daily reflection generated (no messages today)")
     except Exception as e:
         logger.error("Daily reflection job failed: %s", e)
 
 
-def _weekly_cleanup_job():
+def _weekly_cleanup_job(app):
     logger.info("Running weekly cleanup job")
     try:
-        _vacuum_db()
-        _generate_missed_reflections()
-        logger.info("Weekly cleanup complete")
+        with app.app_context():
+            _vacuum_db()
+            _generate_missed_reflections()
+            logger.info("Weekly cleanup complete")
     except Exception as e:
         logger.error("Weekly cleanup job failed: %s", e)
 

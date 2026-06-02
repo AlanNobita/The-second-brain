@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from openai import OpenAI
 from flask import current_app
 
@@ -25,7 +25,7 @@ def get_proactive_suggestions(user_message, current_session_id, limit=3):
         if len(relevant) < 2:
             return []
 
-        recent_cutoff = (datetime.now() - timedelta(hours=24)).isoformat()
+        recent_cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
         old_relevant = [m for m in relevant if str(m.get("created_at", "")) < recent_cutoff]
 
         if not old_relevant:
@@ -68,7 +68,8 @@ def _generate_suggestion_narrative(user_message, suggestions):
             model=current_app.config.get("OPENROUTER_MODEL", "deepseek-v4-flash-free"),
             messages=[{"role": "user", "content": prompt}],
         )
-        return resp.choices[0].message.content.strip()
+        content = resp.choices[0].message.content
+        return content.strip() if content else None
     except Exception as e:
         logger.debug("Suggestion narrative failed: %s", e)
         return None

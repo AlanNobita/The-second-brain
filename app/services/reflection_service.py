@@ -3,12 +3,13 @@ from datetime import date, datetime
 from openai import OpenAI
 from flask import current_app
 
-from ..models.db import get_connection, DB_PATH
+from ..models.db import get_connection
 from ..models.reflection_db import (
     save_reflection,
     get_reflection,
     list_reflections,
     reflection_exists,
+    get_all_message_ids,
 )
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,16 @@ def _get_today_messages():
 
 
 def _get_all_recent_dates(days=7):
+    """Return distinct dates (newest first) on which the user has messaged.
+
+    Uses ``get_all_message_ids`` to confirm the underlying user-message
+    timeline is non-empty before deriving dates from it; this keeps the
+    backfill honest if the database is migrated and the messages table
+    is briefly out of sync with reflections.
+    """
+    user_messages = get_all_message_ids()
+    if not user_messages:
+        return []
     conn = get_connection()
     rows = conn.execute(
         """SELECT DISTINCT DATE(created_at) as d
@@ -74,7 +85,8 @@ def generate_daily_reflection(for_date=None):
             model=current_app.config.get("OPENROUTER_MODEL", "deepseek-v4-flash-free"),
             messages=[{"role": "user", "content": topics_prompt}],
         )
-        topics_text = topics_resp.choices[0].message.content.strip()
+        content = topics_resp.choices[0].message.content
+        topics_text = content.strip() if content else ""
         import json
         try:
             topics = json.loads(topics_text)
@@ -95,7 +107,8 @@ def generate_daily_reflection(for_date=None):
             model=current_app.config.get("OPENROUTER_MODEL", "deepseek-v4-flash-free"),
             messages=[{"role": "user", "content": summary_prompt}],
         )
-        summary = summary_resp.choices[0].message.content.strip()
+        content = summary_resp.choices[0].message.content
+        summary = content.strip() if content else ""
 
         message_ids = [m["id"] for m in messages]
         save_reflection(for_date, summary, topics, message_ids)

@@ -1,3 +1,4 @@
+import * as React from "react";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState, useRef, useEffect } from "react";

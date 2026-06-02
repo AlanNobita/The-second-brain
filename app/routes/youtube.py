@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
 from uuid import uuid4
 from ..services.youtube_service import search_youtube, fetch_transcript, extract_video_id
 from ..services.note_service import debloat_and_structure, save_note_file
@@ -21,7 +21,7 @@ def yt_search():
 
 @youtube_bp.route("/yt/ingest", methods=["POST"])
 def yt_ingest():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     video_url = data.get("video_url", "")
     if not video_url:
         return jsonify({"error": "video_url is required"}), 400
@@ -31,6 +31,12 @@ def yt_ingest():
         vid = extract_video_id(video_url)
         title = f"Ingested Video ({vid})" if vid else "Unknown Video"
         markdown = debloat_and_structure(transcript, title, "YouTube")
+        if markdown is None:
+            current_app.logger.exception(
+                "debloat_and_structure returned None in yt_ingest(video_url=%r)",
+                video_url,
+            )
+            return jsonify({"error": "failed to structure transcript"}), 500
         lines = markdown.split("\n")
         chunks = []
         current_chunk = ""
@@ -64,7 +70,7 @@ def yt_ingest():
 
 @youtube_bp.route("/yt/subscribe", methods=["POST"])
 def yt_subscribe():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     channel_url = data.get("channel_url", "")
     if not channel_url:
         return jsonify({"error": "channel_url is required"}), 400
@@ -74,11 +80,19 @@ def yt_subscribe():
 
 @youtube_bp.route("/yt/unsubscribe", methods=["POST"])
 def yt_unsubscribe():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     sub_id = data.get("sub_id")
     if not sub_id:
         return jsonify({"error": "sub_id is required"}), 400
-    result = unsubscribe(sub_id)
+    # sub_id must be an integer (or a string that's parseable as one) so
+    # downstream SQL doesn't blow up on a list or dict.
+    if isinstance(sub_id, bool) or not isinstance(sub_id, (int, str)):
+        return jsonify({"error": "sub_id must be an integer"}), 400
+    try:
+        sub_id_int = int(sub_id)
+    except (TypeError, ValueError):
+        return jsonify({"error": "sub_id must be an integer"}), 400
+    result = unsubscribe(sub_id_int)
     return jsonify({"status": "ok" if result else "not_found"})
 
 
@@ -90,7 +104,7 @@ def yt_subscriptions():
 
 @youtube_bp.route("/yt/channel", methods=["POST"])
 def yt_channel():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     channel_url = data.get("channel_url", "")
     if not channel_url:
         return jsonify({"error": "channel_url is required"}), 400

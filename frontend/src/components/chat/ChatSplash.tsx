@@ -4,7 +4,7 @@ import { CommandChip } from "./CommandChip";
 import { AIStatus } from "./AIStatus";
 import { ChatInput } from "./ChatInput";
 
-const COMMAND_CHIPS = ["/ytsearch", "/kg", "/reflections", "/reflection-today"];
+const COMMAND_CHIPS = ["/ytsearch", "/kg", "/reflections", "/reflection-today", "/subscriptions"];
 
 interface ChatSplashProps {
   onSend: (msg: string) => Promise<void> | void;

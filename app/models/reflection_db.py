@@ -76,6 +76,13 @@ def reflection_exists(date):
 
 
 def get_all_message_ids():
+    """Return ``{id, created_at}`` for every user message in `messages`.
+
+    Lives in the reflection module because the reflection pipeline is the
+    primary consumer (it cross-references user activity across days), but
+    it can also be used by any code that needs the full user-message
+    timeline.
+    """
     conn = get_connection()
     rows = conn.execute(
         "SELECT id, created_at FROM messages WHERE role = 'user' ORDER BY created_at ASC"

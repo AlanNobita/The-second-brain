@@ -1,9 +1,9 @@
 import os
 import re
+import logging
 from openai import OpenAI
 from openai import APIError, APITimeoutError
 from flask import current_app
-import requests
 
 
 def debloat_and_structure(transcript, video_title, channel):
@@ -36,7 +36,7 @@ Format:
             api_key=current_app.config["OPENROUTER_API_KEY"],
             base_url=current_app.config["OPENROUTER_BASE_URL"],
         )
-        model = current_app.config.get("OPENROUTER_MODEL", "nvidia/nemotron-3-super-120b-a12b:free")
+        model = current_app.config.get("OPENROUTER_MODEL", "deepseek-v4-flash-free")
 
         # Stage 1: Filter and rewrite
         response = client.chat.completions.create(
@@ -47,6 +47,8 @@ Format:
             ]
         )
         filtered = response.choices[0].message.content
+        if filtered is None:
+            return _fallback_debloat(transcript=transcript, video_title=video_title, channel=channel)
 
         # Stage 2: Merge — supplement filtered version with any content the raw transcript has that was dropped
         try:
@@ -69,12 +71,14 @@ Do not add fluff, greetings, sponsor segments, CTAs, or duplicate content alread
                 ],
                 max_tokens=4096,
             )
-            return response2.choices[0].message.content
+            merged = response2.choices[0].message.content
+            if merged is None:
+                return filtered if filtered is not None else _fallback_debloat(transcript=transcript, video_title=video_title, channel=channel)
+            return merged
         except (APIError, APITimeoutError):
             return filtered
 
-    except (APIError, APITimeoutError, requests.RequestException, KeyError, RuntimeError) as e:
-        import logging
+    except (APIError, APITimeoutError, KeyError, RuntimeError) as e:
         logging.getLogger(__name__).warning("AI de-bloat failed: %s", e)
         return _fallback_debloat(transcript, video_title, channel)
 

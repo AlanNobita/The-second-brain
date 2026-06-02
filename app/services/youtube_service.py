@@ -47,22 +47,18 @@ def fetch_transcript(video_url):
         logger.debug("youtube-transcript-api failed for %s: %s", video_url, e)
 
     try:
-        tmp = tempfile.NamedTemporaryFile(suffix=".srt", delete=False, prefix=f"yt_{video_id}_")
-        tmp_path = tmp.name
-        tmp.close()
-        subprocess.run(
-            ["yt-dlp", "--skip-download", "--write-auto-sub", "--sub-lang", "en",
-             "--convert-subs", "srt", "-o", tmp_path.replace(".srt", ""), video_url],
-            capture_output=True, text=True, timeout=60
-        )
-        srt_path = tmp_path.replace(".srt", ".en.srt")
-        if os.path.exists(tmp_path):
-            os.unlink(tmp_path)
-        if os.path.exists(srt_path):
-            with open(srt_path, "r") as f:
-                raw = f.read()
-            os.unlink(srt_path)
-            return _strip_srt(raw)
+        with tempfile.TemporaryDirectory() as td:
+            tmp_path = os.path.join(td, f"yt_{video_id}.srt")
+            subprocess.run(
+                ["yt-dlp", "--skip-download", "--write-auto-sub", "--sub-lang", "en",
+                 "--convert-subs", "srt", "-o", tmp_path.replace(".srt", ""), video_url],
+                capture_output=True, text=True, timeout=60
+            )
+            srt_path = tmp_path.replace(".srt", ".en.srt")
+            if os.path.exists(srt_path):
+                with open(srt_path, "r") as f:
+                    raw = f.read()
+                return _strip_srt(raw)
     except Exception as e:
         logger.debug("yt-dlp failed for %s: %s", video_url, e)
 

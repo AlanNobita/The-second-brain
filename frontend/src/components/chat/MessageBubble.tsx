@@ -86,8 +86,9 @@ function makeMarkdownComponents(onNodeClick?: (label: string) => void) {
     li: ({ children, ...props }: any) => (
       <li {...props}>{processChildren(children, onNodeClick)}</li>
     ),
-    code: ({ inline, className, children, ...props }: any) => {
-      if (inline) {
+    code: ({ className, children, ...props }: any) => {
+      const isBlock = /language-/.test(className || "");
+      if (!isBlock) {
         return (
           <code
             className="rounded bg-background/60 px-1 py-0.5 font-mono text-xs"
